@@ -1,0 +1,21 @@
+# SearXNG .gitignore
+
+# Environment secrets (contains SEARXNG_SECRET)
+.env
+
+# Docker volumes
+redis-data/
+
+# Logs
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
