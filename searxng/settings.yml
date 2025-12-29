@@ -1,6 +1,7 @@
 # SearXNG Configuration for Recovery Bot
 # Documentation: https://docs.searxng.org/admin/settings/
-# Updated: 2025-12-28 - Added FANUC/robotics engines
+# Updated: 2025-12-28 - Added Stack Exchange, code repos, engine weights
+# Google disabled due to upstream bug #5286 - revisit Jan 2026
 
 use_default_settings: true
 
@@ -54,39 +55,61 @@ outgoing:
   enable_http2: true
 
 engines:
-  # Primary Search Engines
+  # =============================================================
+  # PRIMARY SEARCH ENGINES (with weights)
+  # =============================================================
+
+  # DISABLED - Upstream bug #5286 (Oct 2025) - revisit Jan 2026
   - name: google
     engine: google
     shortcut: g
-    disabled: false
-
-  - name: bing
-    engine: bing
-    shortcut: b
-    disabled: false
-
-  - name: duckduckgo
-    engine: duckduckgo
-    shortcut: ddg
-    disabled: false
+    disabled: true
 
   - name: brave
     engine: brave
     shortcut: br
+    weight: 1.5
     disabled: false
+    timeout: 6.0
 
-  # Reference
+  - name: bing
+    engine: bing
+    shortcut: b
+    weight: 1.2
+    disabled: false
+    timeout: 6.0
+
+  - name: startpage
+    engine: startpage
+    shortcut: sp
+    weight: 1.1
+    disabled: false
+    timeout: 6.0
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    weight: 1.0
+    disabled: false
+    timeout: 4.0
+
+  # =============================================================
+  # REFERENCE
+  # =============================================================
   - name: wikipedia
     engine: wikipedia
     shortcut: wp
     disabled: false
+    timeout: 3.0
 
-  # News Engines
+  # =============================================================
+  # NEWS ENGINES
+  # =============================================================
   - name: google news
     engine: google_news
     shortcut: gn
     categories: news
-    disabled: false
+    disabled: true  # Depends on broken Google
 
   - name: bing news
     engine: bing_news
@@ -94,19 +117,23 @@ engines:
     categories: news
     disabled: false
 
-  # Map Engines
+  # =============================================================
+  # MAP ENGINES
+  # =============================================================
   - name: openstreetmap
     engine: openstreetmap
     shortcut: osm
     categories: map
     disabled: false
 
-  # Academic/Research Engines
+  # =============================================================
+  # ACADEMIC/RESEARCH ENGINES
+  # =============================================================
   - name: google scholar
     engine: google_scholar
     shortcut: gs
     categories: science
-    disabled: false
+    disabled: true  # Depends on broken Google
     timeout: 15.0
 
   - name: arxiv
@@ -114,14 +141,14 @@ engines:
     shortcut: arx
     categories: science
     disabled: false
-    timeout: 15.0
+    timeout: 12.0
 
   - name: semantic scholar
     engine: semantic_scholar
     shortcut: ss
     categories: science
     disabled: false
-    timeout: 15.0
+    timeout: 12.0
 
   - name: pubmed
     engine: pubmed
@@ -130,7 +157,75 @@ engines:
     disabled: false
     timeout: 15.0
 
-  # Technical Documentation
+  - name: crossref
+    engine: crossref
+    shortcut: cr
+    categories: science
+    disabled: false
+    timeout: 30.0
+
+  # =============================================================
+  # Q&A - STACK EXCHANGE NETWORK
+  # =============================================================
+  - name: stackoverflow
+    engine: stackexchange
+    shortcut: st
+    api_site: 'stackoverflow'
+    categories: [it, q&a]
+    disabled: false
+    timeout: 8.0
+
+  - name: askubuntu
+    engine: stackexchange
+    shortcut: ubuntu
+    api_site: 'askubuntu'
+    categories: [it, q&a]
+    disabled: false
+    timeout: 8.0
+
+  - name: superuser
+    engine: stackexchange
+    shortcut: su
+    api_site: 'superuser'
+    categories: [it, q&a]
+    disabled: false
+    timeout: 8.0
+
+  - name: serverfault
+    engine: stackexchange
+    shortcut: sf
+    api_site: 'serverfault'
+    categories: [it, q&a]
+    disabled: false
+    timeout: 8.0
+
+  - name: unix stackexchange
+    engine: stackexchange
+    shortcut: unix
+    api_site: 'unix'
+    categories: [it, q&a]
+    disabled: false
+    timeout: 8.0
+
+  - name: electronics stackexchange
+    engine: stackexchange
+    shortcut: ee
+    api_site: 'electronics'
+    categories: [it, q&a, science]
+    disabled: false
+    timeout: 8.0
+
+  - name: robotics stackexchange
+    engine: stackexchange
+    shortcut: rob
+    api_site: 'robotics'
+    categories: [it, q&a, science]
+    disabled: false
+    timeout: 8.0
+
+  # =============================================================
+  # CODE REPOSITORIES
+  # =============================================================
   - name: github
     engine: github
     shortcut: gh
@@ -138,6 +233,25 @@ engines:
     disabled: false
     timeout: 10.0
 
+  - name: gitlab
+    engine: gitlab
+    base_url: https://gitlab.com
+    shortcut: gl
+    categories: [it, repos]
+    disabled: false
+    timeout: 10.0
+
+  - name: codeberg
+    engine: gitea
+    base_url: https://codeberg.org
+    shortcut: cb
+    categories: [it, repos]
+    disabled: false
+    timeout: 10.0
+
+  # =============================================================
+  # PACKAGE MANAGERS
+  # =============================================================
   - name: dockerhub
     engine: docker_hub
     shortcut: dock
@@ -159,7 +273,23 @@ engines:
     disabled: false
     timeout: 10.0
 
-  # Forums and Community
+  - name: crates.io
+    engine: crates
+    shortcut: crates
+    categories: [it, packages]
+    disabled: false
+    timeout: 6.0
+
+  - name: pkg.go.dev
+    engine: pkg_go_dev
+    shortcut: pgo
+    categories: [it, packages]
+    disabled: false
+    timeout: 6.0
+
+  # =============================================================
+  # COMMUNITY/FORUMS
+  # =============================================================
   - name: reddit
     engine: reddit
     shortcut: re
@@ -167,7 +297,6 @@ engines:
     disabled: false
     timeout: 10.0
 
-  # Hacker News for tech discussions
   - name: hackernews
     engine: hackernews
     shortcut: hn
@@ -175,7 +304,28 @@ engines:
     disabled: false
     timeout: 10.0
 
-  # Disabled Engines
+  # =============================================================
+  # DOCUMENTATION WIKIS
+  # =============================================================
+  - name: arch linux wiki
+    engine: archlinux
+    shortcut: al
+    categories: [it, software wikis]
+    disabled: false
+
+  - name: gentoo
+    engine: mediawiki
+    shortcut: ge
+    categories: [it, software wikis]
+    base_url: "https://wiki.gentoo.org/"
+    api_path: "api.php"
+    search_type: text
+    timeout: 10.0
+    disabled: false
+
+  # =============================================================
+  # DISABLED ENGINES
+  # =============================================================
   - name: yahoo
     disabled: true
 

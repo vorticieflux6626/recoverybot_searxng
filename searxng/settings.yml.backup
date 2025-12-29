@@ -1,0 +1,162 @@
+# SearXNG Configuration for Recovery Bot
+# Documentation: https://docs.searxng.org/admin/settings/
+
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "Recovery Bot Search"
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+  enable_metrics: true
+
+search:
+  safe_search: 0
+  autocomplete: "duckduckgo"
+  default_lang: "en-US"
+  ban_time_on_fail: 5
+  max_ban_time_on_fail: 120
+
+  # Enable JSON format for API access
+  formats:
+    - html
+    - json
+    - csv
+    - rss
+
+server:
+  # Bind to all interfaces inside container
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "${SEARXNG_SECRET}"
+
+  # Disable rate limiting for internal use
+  limiter: false
+  public_instance: false
+
+  # Image proxy for privacy
+  image_proxy: true
+
+  # HTTP settings
+  http_protocol_version: "1.1"
+  method: "GET"
+
+redis:
+  url: "redis://redis:6379/0"
+
+ui:
+  static_use_hash: true
+  default_theme: simple
+  center_alignment: true
+  default_locale: "en"
+  results_on_new_tab: false
+
+outgoing:
+  # Request timeout settings
+  request_timeout: 8.0
+  max_request_timeout: 20.0
+
+  # User agent rotation
+  useragent_suffix: ""
+
+  # Pool connections
+  pool_connections: 100
+  pool_maxsize: 20
+
+  # Enable keepalive
+  enable_http2: true
+
+# Engine configuration - optimized for research
+engines:
+  # Primary search engines
+  - name: google
+    engine: google
+    shortcut: g
+    disabled: false
+
+  - name: bing
+    engine: bing
+    shortcut: b
+    disabled: false
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false
+
+  - name: brave
+    engine: brave
+    shortcut: br
+    disabled: false
+
+  # Wikipedia for factual info
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    disabled: false
+
+  # News engines (for recent information)
+  - name: google news
+    engine: google_news
+    shortcut: gn
+    disabled: false
+
+  - name: bing news
+    engine: bing_news
+    shortcut: bn
+    disabled: false
+
+  # Map engines (for location-based services)
+  - name: openstreetmap
+    engine: openstreetmap
+    shortcut: osm
+    disabled: false
+
+  # Academic/research engines
+  - name: google scholar
+    engine: google_scholar
+    shortcut: gs
+    disabled: false
+
+  - name: arxiv
+    engine: arxiv
+    shortcut: arx
+    disabled: false
+
+  # Technical documentation
+  - name: github
+    engine: github
+    shortcut: gh
+    disabled: false
+
+  - name: stackoverflow
+    engine: stackoverflow
+    shortcut: so
+    disabled: false
+
+  # Disable slow/redundant engines
+  - name: yahoo
+    disabled: true
+
+  - name: qwant
+    disabled: true
+
+  - name: mojeek
+    disabled: true
+
+categories_as_tabs:
+  general:
+  images:
+  news:
+  map:
+  science:
+  it:
+
+# Enabled plugins
+enabled_plugins:
+  - 'Hash plugin'
+  - 'Search on category select'
+  - 'Self Information'
+  - 'Tracker URL remover'
+  - 'Open Access DOI rewrite'
