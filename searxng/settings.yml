@@ -1,6 +1,6 @@
 # SearXNG Configuration for Recovery Bot
 # Documentation: https://docs.searxng.org/admin/settings/
-# Updated: 2025-12-28 - Added academic engines
+# Updated: 2025-12-28 - Added FANUC/robotics engines
 
 use_default_settings: true
 
@@ -19,7 +19,6 @@ search:
   ban_time_on_fail: 5
   max_ban_time_on_fail: 120
 
-  # Enable JSON format for API access
   formats:
     - html
     - json
@@ -27,19 +26,12 @@ search:
     - rss
 
 server:
-  # Bind to all interfaces inside container
   bind_address: "0.0.0.0"
   port: 8080
   secret_key: "${SEARXNG_SECRET}"
-
-  # Disable rate limiting for internal use
   limiter: false
   public_instance: false
-
-  # Image proxy for privacy
   image_proxy: true
-
-  # HTTP settings
   http_protocol_version: "1.1"
   method: "GET"
 
@@ -54,23 +46,15 @@ ui:
   results_on_new_tab: false
 
 outgoing:
-  # Request timeout settings
   request_timeout: 8.0
   max_request_timeout: 20.0
-
-  # User agent rotation
   useragent_suffix: ""
-
-  # Pool connections
   pool_connections: 100
   pool_maxsize: 20
-
-  # Enable keepalive
   enable_http2: true
 
-# Engine configuration - optimized for research
 engines:
-  # ===== Primary Search Engines =====
+  # Primary Search Engines
   - name: google
     engine: google
     shortcut: g
@@ -91,13 +75,13 @@ engines:
     shortcut: br
     disabled: false
 
-  # ===== Reference =====
+  # Reference
   - name: wikipedia
     engine: wikipedia
     shortcut: wp
     disabled: false
 
-  # ===== News Engines =====
+  # News Engines
   - name: google news
     engine: google_news
     shortcut: gn
@@ -110,14 +94,14 @@ engines:
     categories: news
     disabled: false
 
-  # ===== Map Engines =====
+  # Map Engines
   - name: openstreetmap
     engine: openstreetmap
     shortcut: osm
     categories: map
     disabled: false
 
-  # ===== Academic/Research Engines =====
+  # Academic/Research Engines
   - name: google scholar
     engine: google_scholar
     shortcut: gs
@@ -146,21 +130,7 @@ engines:
     disabled: false
     timeout: 15.0
 
-  - name: base
-    engine: base
-    shortcut: ba
-    categories: science
-    disabled: false
-    timeout: 15.0
-
-  - name: crossref
-    engine: crossref
-    shortcut: cr
-    categories: science
-    disabled: false
-    timeout: 15.0
-
-  # ===== Technical Documentation =====
+  # Technical Documentation
   - name: github
     engine: github
     shortcut: gh
@@ -168,23 +138,16 @@ engines:
     disabled: false
     timeout: 10.0
 
-  - name: stackoverflow
-    engine: stackoverflow
-    shortcut: so
-    categories: it
-    disabled: false
-    timeout: 10.0
-
   - name: dockerhub
     engine: docker_hub
-    shortcut: dh
+    shortcut: dock
     categories: it
     disabled: false
     timeout: 10.0
 
   - name: npm
     engine: npm
-    shortcut: npm
+    shortcut: npmpkg
     categories: it
     disabled: false
     timeout: 10.0
@@ -196,7 +159,23 @@ engines:
     disabled: false
     timeout: 10.0
 
-  # ===== Disabled Engines =====
+  # Forums and Community
+  - name: reddit
+    engine: reddit
+    shortcut: re
+    categories: general
+    disabled: false
+    timeout: 10.0
+
+  # Hacker News for tech discussions
+  - name: hackernews
+    engine: hackernews
+    shortcut: hn
+    categories: it
+    disabled: false
+    timeout: 10.0
+
+  # Disabled Engines
   - name: yahoo
     disabled: true
 
@@ -214,7 +193,6 @@ categories_as_tabs:
   science:
   it:
 
-# Enabled plugins
 enabled_plugins:
   - 'Hash plugin'
   - 'Search on category select'

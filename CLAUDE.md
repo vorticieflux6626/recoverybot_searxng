@@ -129,23 +129,63 @@ The SearXNG client is integrated into the agentic search pipeline:
 
 ## Configuration
 
-### Enabled Search Engines
+### Engine Status (Updated 2025-12-28)
 
-| Engine | Shortcut | Status |
-|--------|----------|--------|
-| Google | g | Enabled |
-| Bing | b | Enabled |
-| DuckDuckGo | ddg | Enabled |
-| Brave | br | Enabled |
-| Wikipedia | wp | Enabled |
-| Google News | gn | Enabled |
-| Bing News | bn | Enabled |
-| OpenStreetMap | osm | Enabled |
+| Engine | Shortcut | Config Status | Operational Status | Notes |
+|--------|----------|---------------|-------------------|-------|
+| **General Web** |
+| Google | g | Enabled | **BROKEN** | Upstream bug [#5286](https://github.com/searxng/searxng/issues/5286) |
+| Bing | b | Enabled | Working | Returns 10 results |
+| DuckDuckGo | ddg | Enabled | Working | May have rate limits |
+| Brave | br | Enabled | **Working Well** | Returns 20 results, reliable |
+| Startpage | sp | Default | **Working Well** | Returns 6-7 results |
+| **Reference** |
+| Wikipedia | wp | Enabled | Working | General knowledge |
+| **News** |
+| Google News | gn | Enabled | Unknown | Depends on Google |
+| Bing News | bn | Enabled | Working | News category |
+| **Maps** |
+| OpenStreetMap | osm | Enabled | Working | Map category |
+| **Academic/Science** |
+| arXiv | arx | Enabled | Working | Returns 10 results |
+| Google Scholar | gs | Enabled | Unknown | Depends on Google |
+| Semantic Scholar | ss | Enabled | Working | Science category |
+| PubMed | pm | Enabled | Working | Medical literature |
+| **Technical/IT** |
+| GitHub | gh | Enabled | Working | Limited results for niche topics |
+| HackerNews | hn | Enabled | Working | Limited for non-tech topics |
+| StackOverflow | so | Default | Working | IT category |
+| PyPI | pip | Enabled | Working | Python packages |
+| npm | npmpkg | Enabled | Working | Node packages |
+| Docker Hub | dock | Enabled | Working | Container images |
+| **Community** |
+| Reddit | re | Enabled | **Working Well** | Returns 25 results, great for troubleshooting |
+
+### Known Issues
+
+1. **Google Engine (BROKEN)**: SearXNG upstream bug [#5286](https://github.com/searxng/searxng/issues/5286) - Google changed their response format. No fix yet. Workaround: Use Brave/Bing/Startpage instead.
+
+2. **Rate Limiting**: Some engines (DuckDuckGo, Google) may trigger CAPTCHAs or rate limits. The `limiter: false` setting helps for private instances.
+
+3. **Niche Topics**: HackerNews and GitHub return 0 results for industrial/robotics topics (FANUC, etc.) - they simply don't have much content on these topics.
+
+### Engine Groups for memOS
+
+The memOS searcher uses these engine groups (defined in `searcher.py`):
+
+```yaml
+fanuc: "reddit,brave,bing,startpage,arxiv"      # Industrial robotics
+robotics: "reddit,brave,bing,arxiv,github"      # General robotics
+academic: "arxiv,semantic_scholar,google_scholar,pubmed"
+technical: "github,stackoverflow,pypi,npm,dockerhub,bing"
+general: "brave,bing,duckduckgo,wikipedia,startpage"
+```
 
 ### Disabled Engines
 
 - Yahoo (slow, redundant)
-- Qwant (unreliable)
+- Qwant (unreliable, often blocked)
+- Mojeek (limited results)
 
 ## Ports
 
@@ -224,4 +264,7 @@ cp -r searxng/ searxng-backup-$(date +%Y%m%d)/
 
 | Date | Change |
 |------|--------|
+| 2025-12-28 | Added FANUC/robotics engines (Reddit, HackerNews, GitHub, arXiv) |
+| 2025-12-28 | Documented engine status - Google broken (upstream bug #5286) |
+| 2025-12-28 | Added academic engines (Semantic Scholar, PubMed) |
 | 2025-12-28 | Initial deployment for Recovery Bot |
