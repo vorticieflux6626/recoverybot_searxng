@@ -1,5 +1,6 @@
 # SearXNG Configuration for Recovery Bot
 # Documentation: https://docs.searxng.org/admin/settings/
+# Updated: 2025-12-28 - Added academic engines
 
 use_default_settings: true
 
@@ -69,7 +70,7 @@ outgoing:
 
 # Engine configuration - optimized for research
 engines:
-  # Primary search engines
+  # ===== Primary Search Engines =====
   - name: google
     engine: google
     shortcut: g
@@ -90,52 +91,112 @@ engines:
     shortcut: br
     disabled: false
 
-  # Wikipedia for factual info
+  # ===== Reference =====
   - name: wikipedia
     engine: wikipedia
     shortcut: wp
     disabled: false
 
-  # News engines (for recent information)
+  # ===== News Engines =====
   - name: google news
     engine: google_news
     shortcut: gn
+    categories: news
     disabled: false
 
   - name: bing news
     engine: bing_news
     shortcut: bn
+    categories: news
     disabled: false
 
-  # Map engines (for location-based services)
+  # ===== Map Engines =====
   - name: openstreetmap
     engine: openstreetmap
     shortcut: osm
+    categories: map
     disabled: false
 
-  # Academic/research engines
+  # ===== Academic/Research Engines =====
   - name: google scholar
     engine: google_scholar
     shortcut: gs
+    categories: science
     disabled: false
+    timeout: 15.0
 
   - name: arxiv
     engine: arxiv
     shortcut: arx
+    categories: science
     disabled: false
+    timeout: 15.0
 
-  # Technical documentation
+  - name: semantic scholar
+    engine: semantic_scholar
+    shortcut: ss
+    categories: science
+    disabled: false
+    timeout: 15.0
+
+  - name: pubmed
+    engine: pubmed
+    shortcut: pm
+    categories: science
+    disabled: false
+    timeout: 15.0
+
+  - name: base
+    engine: base
+    shortcut: ba
+    categories: science
+    disabled: false
+    timeout: 15.0
+
+  - name: crossref
+    engine: crossref
+    shortcut: cr
+    categories: science
+    disabled: false
+    timeout: 15.0
+
+  # ===== Technical Documentation =====
   - name: github
     engine: github
     shortcut: gh
+    categories: it
     disabled: false
+    timeout: 10.0
 
   - name: stackoverflow
     engine: stackoverflow
     shortcut: so
+    categories: it
     disabled: false
+    timeout: 10.0
 
-  # Disable slow/redundant engines
+  - name: dockerhub
+    engine: docker_hub
+    shortcut: dh
+    categories: it
+    disabled: false
+    timeout: 10.0
+
+  - name: npm
+    engine: npm
+    shortcut: npm
+    categories: it
+    disabled: false
+    timeout: 10.0
+
+  - name: pypi
+    engine: pypi
+    shortcut: pip
+    categories: it
+    disabled: false
+    timeout: 10.0
+
+  # ===== Disabled Engines =====
   - name: yahoo
     disabled: true
 
