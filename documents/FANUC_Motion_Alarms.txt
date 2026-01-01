@@ -1,0 +1,54 @@
+# FANUC Motion Alarms Reference
+
+## MOTN-xxx Alarm Codes
+
+### MOTN-003: Pose configuration mismatch
+**Cause**: Robot configuration (wrist, arm, elbow) doesn't match expected position.
+**Solution**:
+1. Check UTOOL and UFRAME settings
+2. Verify configuration mask in motion statement
+3. Use "NO_DECEL" carefully in CNT motions
+
+### MOTN-004: Position not reachable
+**Cause**: Target position is outside robot's work envelope.
+**Solution**:
+1. Check position data for errors
+2. Verify UTOOL offset is correct
+3. Consider using an external axis
+
+### MOTN-023: Collision detected
+**Cause**: Robot detected unexpected contact during motion.
+**Solution**:
+1. Check for physical obstructions
+2. Verify collision detection sensitivity settings
+3. Review robot path for interference
+4. Check payload settings
+
+### MOTN-063: Motion error
+**Cause**: General motion error during path execution.
+**Solution**:
+1. Check servo alarms for underlying issues
+2. Verify encoder calibration
+3. Check for mechanical binding
+4. Review acceleration/deceleration settings
+
+### MOTN-073: Joint speed limit exceeded
+**Cause**: Commanded joint velocity exceeds maximum.
+**Solution**:
+1. Reduce motion speed
+2. Increase cycle time
+3. Check for unreasonable position jumps
+
+## Motion Troubleshooting Tips
+
+1. **Check Position Data**: Use SHIFT+COORD to view position in different frames
+2. **Verify Payloads**: Incorrect payload causes tracking errors
+3. **Monitor Servo Loads**: High loads indicate mechanical issues
+4. **Review Motion Types**: Use appropriate motion (J, L, C) for each segment
+
+## Safety Considerations
+
+- Never disable collision detection in production
+- Always test at reduced speed first
+- Keep safety fences clear during troubleshooting
+- Document any parameter changes

@@ -57,6 +57,14 @@ except ImportError:
     CACHE_AVAILABLE = False
     SemanticCache = None
 
+# Import local docs search (Meilisearch)
+try:
+    from local_docs import get_local_docs, LocalDocsSearch
+    LOCAL_DOCS_AVAILABLE = True
+except ImportError:
+    LOCAL_DOCS_AVAILABLE = False
+    LocalDocsSearch = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -137,7 +145,8 @@ class SearXNGClient:
         timeout: float = 30.0,
         default_engines: Optional[List[str]] = None,
         enable_throttling: bool = True,
-        enable_cache: bool = True
+        enable_cache: bool = True,
+        enable_local_docs: bool = True
     ):
         """
         Initialize SearXNG client.
@@ -148,6 +157,7 @@ class SearXNGClient:
             default_engines: Default engines to use (None = all enabled)
             enable_throttling: Enable intelligent request throttling
             enable_cache: Enable semantic caching (L1 Redis + L2 Qdrant)
+            enable_local_docs: Enable local document search (Meilisearch)
         """
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -158,6 +168,8 @@ class SearXNGClient:
         self._throttler = get_throttler() if enable_throttling and THROTTLER_AVAILABLE else None
         self._cache = get_cache() if enable_cache and CACHE_AVAILABLE else None
         self._cache_initialized = False
+        self._local_docs = get_local_docs() if enable_local_docs and LOCAL_DOCS_AVAILABLE else None
+        self._local_docs_initialized = False
         self._stats = {
             "total_searches": 0,
             "total_results": 0,
@@ -165,7 +177,8 @@ class SearXNGClient:
             "avg_response_time_ms": 0.0,
             "throttle_delays_ms": 0.0,
             "cache_hits": 0,
-            "cache_misses": 0
+            "cache_misses": 0,
+            "local_docs_results": 0
         }
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -182,6 +195,12 @@ class SearXNGClient:
         if self._cache and not self._cache_initialized:
             await self._cache.initialize()
             self._cache_initialized = True
+
+    async def _init_local_docs(self):
+        """Initialize local docs search if not already done."""
+        if self._local_docs and not self._local_docs_initialized:
+            await self._local_docs.initialize()
+            self._local_docs_initialized = True
 
     async def cached_search(
         self,
@@ -609,6 +628,87 @@ class SearXNGClient:
             "fusion_applied": use_rrf and FUSION_AVAILABLE
         }
 
+    async def search_with_local_docs(
+        self,
+        query: str,
+        engines: Optional[List[str]] = None,
+        local_docs_limit: int = 5,
+        web_results_limit: int = 15,
+        use_rrf: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Search combining web results with local FANUC documentation.
+
+        Prioritizes local docs for industrial/technical queries while
+        also including web results for broader context.
+
+        Args:
+            query: Search query
+            engines: Web engines to use
+            local_docs_limit: Max results from local docs
+            web_results_limit: Max results from web search
+            use_rrf: Whether to apply RRF fusion to web results
+
+        Returns:
+            Dict with local_docs, web_results, and combined results
+        """
+        results = {
+            "query": query,
+            "local_docs": [],
+            "web_results": [],
+            "combined": [],
+            "local_docs_available": LOCAL_DOCS_AVAILABLE and self._local_docs is not None
+        }
+
+        # Search local documents
+        if self._local_docs:
+            try:
+                await self._init_local_docs()
+                local_results = await self._local_docs.search(query, limit=local_docs_limit)
+                results["local_docs"] = [r.to_searxng_format() for r in local_results]
+                self._stats["local_docs_results"] += len(local_results)
+                logger.info(f"Local docs: {len(local_results)} results for '{query[:30]}...'")
+            except Exception as e:
+                logger.warning(f"Local docs search failed: {e}")
+
+        # Search web via SearXNG
+        try:
+            if use_rrf and FUSION_AVAILABLE:
+                web_results = await self.search_with_rrf(
+                    query,
+                    engines=engines,
+                    top_k=web_results_limit
+                )
+            else:
+                response = await self.search(query, engines=engines, max_results=web_results_limit)
+                web_results = [r.to_dict() for r in response.results]
+
+            results["web_results"] = web_results
+        except Exception as e:
+            logger.warning(f"Web search failed: {e}")
+
+        # Combine results: local docs first (higher priority), then web
+        combined = []
+
+        # Add local docs with boosted scores
+        for doc in results["local_docs"]:
+            doc_copy = doc.copy()
+            doc_copy["score"] = doc.get("score", 1.0) + 0.5  # Boost local docs
+            doc_copy["source_type"] = "local_docs"
+            combined.append(doc_copy)
+
+        # Add web results
+        for web in results["web_results"]:
+            web_copy = web.copy()
+            web_copy["source_type"] = "web"
+            combined.append(web_copy)
+
+        # Sort by score (local docs should be at top due to boost)
+        combined.sort(key=lambda x: x.get("score", 0), reverse=True)
+        results["combined"] = combined
+
+        return results
+
     async def health_check(self) -> Dict[str, Any]:
         """
         Check if SearXNG is responding.
@@ -639,6 +739,8 @@ class SearXNGClient:
             stats["throttler"] = self._throttler.get_all_status()
         if self._cache:
             stats["cache"] = self._cache.get_stats()
+        if self._local_docs:
+            stats["local_docs"] = self._local_docs.get_stats()
         return stats
 
     def get_engine_health(self, engine: str = "default") -> Dict[str, Any]:

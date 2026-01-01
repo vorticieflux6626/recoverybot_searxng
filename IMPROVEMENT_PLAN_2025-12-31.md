@@ -168,11 +168,19 @@ L3: Fresh Search           → Store in L1 + L2, 1-2s latency
 
 | Task | Effort | Impact | Status |
 |------|--------|--------|--------|
-| Deploy Meilisearch for local FANUC docs | High | High | Pending |
+| Deploy Meilisearch for local FANUC docs | High | High | ✅ Done |
 | TLS fingerprint randomization (curl_cffi) | High | Medium | Pending |
 | Residential proxy integration | Medium | Medium | Pending |
 | Google Programmable Search for industrial sites | Medium | Medium | Pending |
 | Cross-encoder reranking for search results | High | Medium | Pending |
+
+**Meilisearch Implementation (2026-01-01):**
+- Container: `searxng-meilisearch` on port 7700
+- Index: `fanuc_docs` with 8 chunks from 3 FANUC documents
+- Chunking: 1000 chars with 100 char overlap
+- Integration: `local_docs.py` + `search_with_local_docs()` method
+- Documents: Servo troubleshooting, Motion alarms, System variables
+- Local docs prioritized in combined search results
 
 ---
 

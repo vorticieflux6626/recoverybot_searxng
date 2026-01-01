@@ -1,0 +1,85 @@
+# FANUC Servo Troubleshooting Guide
+
+## Common Servo Alarms and Solutions
+
+### SRVO-001: Servo motor overcurrent
+**Cause**: Motor draws excessive current due to mechanical binding or motor fault.
+**Solution**:
+1. Check for mechanical obstruction
+2. Verify motor connections
+3. Check for motor insulation breakdown
+4. Replace motor if necessary
+
+### SRVO-002: Servo motor overload
+**Cause**: Continuous operation at high load conditions.
+**Solution**:
+1. Reduce cycle time or load
+2. Improve cooling
+3. Check for proper lubrication
+
+### SRVO-023: Servo motor overheat
+**Cause**: Motor temperature exceeds safe operating limits.
+**Solution**:
+1. Check cooling fan operation
+2. Clean ventilation passages
+3. Reduce duty cycle
+4. Verify ambient temperature
+
+### SRVO-036: Servo parameter invalid
+**Cause**: Incorrect or corrupted servo parameters.
+**Solution**:
+1. Reload default parameters
+2. Check motor type selection
+3. Verify encoder settings
+
+### SRVO-050: VRDY signal off
+**Cause**: Servo amplifier not ready.
+**Solution**:
+1. Check power supply voltage
+2. Verify emergency stop circuit
+3. Check amplifier status LED
+
+### SRVO-062: BZAL alarm
+**Cause**: Brake release signal abnormal.
+**Solution**:
+1. Check brake relay
+2. Verify brake power supply
+3. Inspect brake mechanism
+
+### SRVO-063: Robot servo alarm
+**Cause**: General servo communication error.
+**Solution**:
+1. Check servo amplifier connections
+2. Verify encoder cable integrity
+3. Reset and reinitialize
+4. Check for electromagnetic interference
+
+### SRVO-065: OHAL1 alarm
+**Cause**: Servo amplifier overheat.
+**Solution**:
+1. Check cooling fan operation
+2. Clean heat sink
+3. Verify ambient temperature
+4. Reduce duty cycle
+
+### SRVO-068: DTERR alarm
+**Cause**: Digital torque limit exceeded.
+**Solution**:
+1. Check for mechanical binding
+2. Reduce acceleration/deceleration
+3. Verify torque limit settings
+
+## General Troubleshooting Steps
+
+1. **Read alarm details**: Use MENU > ALARM > SHOW to see full alarm message
+2. **Check history**: Review alarm history for patterns
+3. **Power cycle**: Sometimes a controlled restart resolves transient issues
+4. **Inspect cables**: Check all servo and encoder cables for damage
+5. **Verify parameters**: Ensure servo parameters match motor specifications
+
+## Important Safety Notes
+
+- Always follow lockout/tagout procedures
+- Wear appropriate PPE when working on robots
+- Never bypass safety interlocks
+- Consult FANUC documentation for specific procedures

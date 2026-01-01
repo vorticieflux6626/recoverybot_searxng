@@ -1,0 +1,72 @@
+# FANUC System Variables Quick Reference
+
+## Common System Variables
+
+### Position Variables
+- **$CURPOS**: Current Cartesian position
+- **$CURJPOS**: Current joint position
+- **$TOOL_OFFSET**: Active tool offset
+- **$UFRAME**: Active user frame
+
+### Group Variables
+- **$GROUP[1].$MASTER_ENB**: Master enable status
+- **$GROUP[1].$SERVO_ENBL**: Servo enable status
+- **$GROUP[1].$BRAKE_REL**: Brake release status
+
+### I/O Variables
+- **$DIN[n]**: Digital input n
+- **$DOUT[n]**: Digital output n
+- **$AIN[n]**: Analog input n
+- **$AOUT[n]**: Analog output n
+
+### System Configuration
+- **$SCR.$MAXSPEED**: Maximum override speed
+- **$SCR.$USESSION**: User session number
+- **$SCR.$PROGNAME**: Current program name
+
+## Servo-Related Variables
+
+### Servo Parameters
+- **$PARAM_GROUP[1].$SERVO_ON**: Servo on/off control
+- **$PARAM_GROUP[1].$SERVO_TORQUE[n]**: Torque limit for axis n
+- **$PARAM_GROUP[1].$SERVO_PWR_LOSS**: Power loss detection
+
+### Motor Temperatures
+- **$DMR_GRP[1].$M_TEMP[n]**: Motor n temperature
+- **$DMR_GRP[1].$A_TEMP[n]**: Amplifier n temperature
+
+### Encoder Values
+- **$MOR_GRP[1].$INCR_CNTR[n]**: Incremental counter for axis n
+- **$MOR_GRP[1].$REF_POS[n]**: Reference position for axis n
+
+## Alarm and Error Variables
+
+### Current Alarms
+- **$ALARM_NUM**: Current alarm number
+- **$ALARM_CAUSE**: Alarm cause code
+- **$ALARM_SEV**: Alarm severity (1=WARN, 2=PAUSE, 3=STOP)
+
+### Alarm History
+- **$ALARM_HIS[n].$ALARM_ID**: Alarm ID in history slot n
+- **$ALARM_HIS[n].$ALARM_TIME**: Time of alarm n
+
+## Troubleshooting with Variables
+
+### Check Servo Status
+```
+$GROUP[1].$SERVO_ENBL = TRUE for enabled
+$GROUP[1].$BRAKE_REL = TRUE for brakes released
+$PARAM_GROUP[1].$SERVO_ON = 1 for servo on
+```
+
+### Monitor Motor Health
+```
+$DMR_GRP[1].$M_TEMP[1] - should be < 80°C
+$DMR_GRP[1].$A_TEMP[1] - should be < 60°C
+```
+
+### Check I/O States
+```
+$DIN[1..8] - Check fence and door inputs
+$DOUT[1..8] - Check gripper and tool outputs
+```
