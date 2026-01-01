@@ -45,7 +45,7 @@ Research from 4 expert agents covering: engine optimization, anti-detection stra
 | Add Mojeek engine | Low | High | ✅ Done (10 results) |
 | Add Yep engine | Low | High | ❌ Blocked (HTTP 403) |
 | Fix duplicate entries in settings.yml | Low | Medium | ✅ Done |
-| Add Tor container to docker-compose | Medium | High | ✅ Done |
+| Add Tor container to docker-compose | Medium | High | ✅ Done (30s timeout, Reddit blocks Tor) |
 | Lower DuckDuckGo/Startpage weights | Low | Medium | ✅ Done |
 
 **Configuration for Mojeek and Yep:**
@@ -221,10 +221,21 @@ L3: Fresh Search           → Store in L1 + L2
 | File | Purpose |
 |------|---------|
 | `settings.yml` | Engine configuration |
-| `docker-compose.yml` | Container setup |
-| `rotate-tls.sh` | TLS rotation cron |
+| `docker-compose.yml` | Container setup (includes Tor) |
+| `intelligent_throttler.py` | Poisson delays + circuit breaker |
+| `result_fusion.py` | RRF/weighted/Borda fusion |
+| `query_router.py` | 8-type query classification |
+| `search_metrics.py` | Quality metrics tracking |
+| `searxng_client.py` | Async Python client |
 | `check_engines.sh` | Health monitoring |
-| `tests/test_contracts.py` | API contract tests |
+
+## Known Limitations
+
+### Tor Proxy
+- **Reddit blocks Tor exit nodes** - Reddit returns "too many requests" when accessed via Tor
+- **Increased latency** - ~1.6s avg vs ~1s without Tor (60% slower)
+- **Configuration**: `extra_proxy_timeout: 30` required (default 6s too short)
+- **Workaround**: Disable Tor for Reddit-heavy queries via engine selection
 
 ---
 
