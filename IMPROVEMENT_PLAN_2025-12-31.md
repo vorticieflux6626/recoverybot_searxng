@@ -90,11 +90,18 @@ tor:
 
 | Task | Effort | Impact | Status |
 |------|--------|--------|--------|
-| Register for Brave Search API | Low | High | Pending |
-| Register for Tavily API (1K free) | Low | High | Pending |
+| Register for Brave Search API | Low | High | ⏭️ Skipped (using Tor) |
+| Register for Tavily API (1K free) | Low | High | ⏭️ Skipped (using Tor) |
 | Add OpenAlex as custom engine | Medium | High | Pending |
-| Implement circuit breaker in memOS | Medium | High | Pending |
+| Implement circuit breaker in memOS | Medium | High | ✅ Done (intelligent_throttler.py) |
 | Add RRF to result fusion | Medium | High | Pending |
+| **Intelligent Request Throttling** | Medium | High | ✅ Done |
+
+**Throttling Implementation (2025-12-31):**
+- Human-like Poisson-distributed delays
+- Exponential backoff with full jitter (AWS pattern)
+- Per-engine circuit breaker
+- Tor SOCKS5 proxy integration
 
 **Brave Search API Integration (memOS):**
 ```python
