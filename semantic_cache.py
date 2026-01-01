@@ -295,12 +295,14 @@ class SemanticCache:
             try:
                 embedding = await self._get_embedding(query)
                 if embedding:
-                    results = self._qdrant.search(
+                    # Qdrant v1.16+ uses query_points instead of search
+                    search_result = self._qdrant.query_points(
                         collection_name=self.config.collection_name,
-                        query_vector=embedding,
+                        query=embedding,
                         limit=1,
                         score_threshold=self.config.similarity_threshold
                     )
+                    results = search_result.points if search_result else []
 
                     latency = (time.time() - start) * 1000
                     self._l2_latencies.append(latency)
