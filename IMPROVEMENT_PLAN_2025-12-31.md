@@ -134,7 +134,7 @@ class BraveSearcher:
 | Implement semantic cache layer | High | Very High | ✅ Done (semantic_cache.py + Qdrant) |
 | Add search quality metrics (MRR, NDCG) | Medium | Medium | ✅ Done (search_metrics.py) |
 | Implement query router (pattern + LLM) | Medium | High | ✅ Done (query_router.py) |
-| Add feedback loop for preset learning | Medium | Medium | Pending |
+| Add feedback loop for preset learning | Medium | Medium | ✅ Done (feedback_loop.py) |
 
 **Query Router Features (2025-01-01):**
 - 8 query types: academic, technical, code, troubleshooting, industrial, medical, news, general
@@ -154,6 +154,13 @@ L3: Fresh Search           → Store in L1 + L2, 1-2s latency
 - `docker-compose.yml` - Added Qdrant container (port 6333)
 - Embedding model: nomic-embed-text via Ollama
 - L1 TTL: 1 hour, L2 TTL: 24 hours
+
+**Feedback Loop (Implemented 2026-01-01):**
+- Tracks CTR, dwell time, helpful ratings per engine/query type
+- Calculates engagement score (40% CTR, 25% dwell, 25% helpful, 10% position)
+- Returns weight adjustments (0.5x to 2.0x) for query router
+- Persists feedback to Redis for long-term learning
+- Example: Brave at 53% CTR → 1.0x, Bing at 0% CTR → 0.55x
 
 ---
 
