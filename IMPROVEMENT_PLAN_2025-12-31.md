@@ -92,9 +92,9 @@ tor:
 |------|--------|--------|--------|
 | Register for Brave Search API | Low | High | ⏭️ Skipped (using Tor) |
 | Register for Tavily API (1K free) | Low | High | ⏭️ Skipped (using Tor) |
-| Add OpenAlex as custom engine | Medium | High | Pending |
+| Add OpenAlex as custom engine | Medium | High | ✅ Done (json_engine) |
 | Implement circuit breaker in memOS | Medium | High | ✅ Done (intelligent_throttler.py) |
-| Add RRF to result fusion | Medium | High | Pending |
+| Add RRF to result fusion | Medium | High | ✅ Done (result_fusion.py) |
 | **Intelligent Request Throttling** | Medium | High | ✅ Done |
 
 **Throttling Implementation (2025-12-31):**
@@ -132,9 +132,15 @@ class BraveSearcher:
 | Task | Effort | Impact | Status |
 |------|--------|--------|--------|
 | Implement semantic cache layer | High | Very High | Pending |
-| Add search quality metrics (MRR, NDCG) | Medium | Medium | Pending |
-| Implement query router (pattern + LLM) | Medium | High | Pending |
+| Add search quality metrics (MRR, NDCG) | Medium | Medium | ✅ Done (search_metrics.py) |
+| Implement query router (pattern + LLM) | Medium | High | ✅ Done (query_router.py) |
 | Add feedback loop for preset learning | Medium | Medium | Pending |
+
+**Query Router Features (2025-01-01):**
+- 8 query types: academic, technical, code, troubleshooting, industrial, medical, news, general
+- Pattern-based classification (no LLM required)
+- Automatic engine group selection
+- Confidence scoring for routing decisions
 
 **Semantic Cache Architecture:**
 ```
