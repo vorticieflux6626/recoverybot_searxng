@@ -65,6 +65,40 @@ except ImportError:
     LOCAL_DOCS_AVAILABLE = False
     LocalDocsSearch = None
 
+# Import TLS fingerprint rotation
+try:
+    from tls_rotation import get_tls_rotator, TLSRotator, TLSConfig, is_tls_available
+    TLS_ROTATION_AVAILABLE = is_tls_available()
+except ImportError:
+    TLS_ROTATION_AVAILABLE = False
+    TLSRotator = None
+    TLSConfig = None
+
+# Import cross-encoder reranking
+try:
+    from cross_encoder_rerank import get_reranker, CrossEncoderReranker, RerankerConfig, is_reranker_available
+    RERANKER_AVAILABLE = is_reranker_available()
+except ImportError:
+    RERANKER_AVAILABLE = False
+    CrossEncoderReranker = None
+    RerankerConfig = None
+
+# Import search metrics
+try:
+    from search_metrics import get_metrics, SearchMetrics
+    METRICS_AVAILABLE = True
+except ImportError:
+    METRICS_AVAILABLE = False
+    SearchMetrics = None
+
+# Import feedback loop
+try:
+    from feedback_loop import get_feedback_loop, FeedbackLoop, SearchFeedback, FeedbackSignal
+    FEEDBACK_AVAILABLE = True
+except ImportError:
+    FEEDBACK_AVAILABLE = False
+    FeedbackLoop = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -146,7 +180,11 @@ class SearXNGClient:
         default_engines: Optional[List[str]] = None,
         enable_throttling: bool = True,
         enable_cache: bool = True,
-        enable_local_docs: bool = True
+        enable_local_docs: bool = True,
+        enable_tls_rotation: bool = False,  # Disabled by default (use for external requests)
+        enable_reranking: bool = True,
+        enable_metrics: bool = True,
+        enable_feedback: bool = True
     ):
         """
         Initialize SearXNG client.
@@ -158,6 +196,10 @@ class SearXNGClient:
             enable_throttling: Enable intelligent request throttling
             enable_cache: Enable semantic caching (L1 Redis + L2 Qdrant)
             enable_local_docs: Enable local document search (Meilisearch)
+            enable_tls_rotation: Enable TLS fingerprint rotation (for external requests)
+            enable_reranking: Enable cross-encoder reranking
+            enable_metrics: Enable search quality metrics
+            enable_feedback: Enable feedback loop for learning
         """
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -170,6 +212,11 @@ class SearXNGClient:
         self._cache_initialized = False
         self._local_docs = get_local_docs() if enable_local_docs and LOCAL_DOCS_AVAILABLE else None
         self._local_docs_initialized = False
+        self._tls_rotator = get_tls_rotator() if enable_tls_rotation and TLS_ROTATION_AVAILABLE else None
+        self._reranker = get_reranker() if enable_reranking and RERANKER_AVAILABLE else None
+        self._metrics = get_metrics() if enable_metrics and METRICS_AVAILABLE else None
+        self._feedback = get_feedback_loop() if enable_feedback and FEEDBACK_AVAILABLE else None
+        self._feedback_initialized = False
         self._stats = {
             "total_searches": 0,
             "total_results": 0,
@@ -178,7 +225,8 @@ class SearXNGClient:
             "throttle_delays_ms": 0.0,
             "cache_hits": 0,
             "cache_misses": 0,
-            "local_docs_results": 0
+            "local_docs_results": 0,
+            "reranked_searches": 0
         }
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -201,6 +249,12 @@ class SearXNGClient:
         if self._local_docs and not self._local_docs_initialized:
             await self._local_docs.initialize()
             self._local_docs_initialized = True
+
+    async def _init_feedback(self):
+        """Initialize feedback loop if not already done."""
+        if self._feedback and not self._feedback_initialized:
+            await self._feedback.initialize()
+            self._feedback_initialized = True
 
     async def cached_search(
         self,
@@ -709,6 +763,210 @@ class SearXNGClient:
 
         return results
 
+    async def search_full_pipeline(
+        self,
+        query: str,
+        engines: Optional[List[str]] = None,
+        include_local_docs: bool = True,
+        apply_reranking: bool = True,
+        record_metrics: bool = True,
+        top_k: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Full pipeline search with all features integrated.
+
+        Pipeline:
+        1. Query routing → Select optimal engines
+        2. Cache check → L1 (exact) → L2 (semantic) → Fresh search
+        3. Local docs → Search Meilisearch for FANUC docs
+        4. Result fusion → RRF combine web + local
+        5. Reranking → Cross-encoder neural rerank
+        6. Metrics → Track quality metrics
+        7. Feedback → Record for learning
+
+        Args:
+            query: Search query
+            engines: Override engines (default: auto-routed)
+            include_local_docs: Include local FANUC docs
+            apply_reranking: Apply cross-encoder reranking
+            record_metrics: Track search metrics
+            top_k: Number of results to return
+
+        Returns:
+            Dict with pipeline results and metadata
+        """
+        import time
+        start_time = time.time()
+
+        result = {
+            "query": query,
+            "pipeline": {
+                "routing": None,
+                "cache": None,
+                "local_docs": None,
+                "fusion": None,
+                "reranking": None,
+                "metrics": None
+            },
+            "results": [],
+            "metadata": {
+                "total_time_ms": 0,
+                "engines_used": [],
+                "result_count": 0
+            }
+        }
+
+        # 1. Query Routing
+        if ROUTER_AVAILABLE:
+            router = get_router()
+            decision = router.route(query)
+            engines = engines or decision.engines
+            result["pipeline"]["routing"] = {
+                "query_type": decision.query_type.value,
+                "confidence": decision.confidence,
+                "engines": engines
+            }
+        else:
+            engines = engines or self.default_engines
+            result["pipeline"]["routing"] = {"engines": engines, "auto": False}
+
+        result["metadata"]["engines_used"] = engines
+
+        # 2. Cache Check
+        web_results = []
+        cache_hit = False
+        if self._cache:
+            await self._init_cache()
+            entry, level = await self._cache.get(query, engines)
+            if entry:
+                cache_hit = True
+                web_results = entry.results
+                result["pipeline"]["cache"] = {"hit": True, "level": level}
+                self._stats["cache_hits"] += 1
+
+        if not cache_hit:
+            result["pipeline"]["cache"] = {"hit": False}
+            self._stats["cache_misses"] += 1
+
+            # Fresh search via SearXNG
+            try:
+                if FUSION_AVAILABLE:
+                    web_results = await self.search_with_rrf(
+                        query, engines=engines, top_k=top_k * 2
+                    )
+                    result["pipeline"]["fusion"] = {"method": "rrf", "input_count": len(web_results)}
+                else:
+                    response = await self.search(query, engines=engines, max_results=top_k * 2)
+                    web_results = [r.to_dict() for r in response.results]
+            except Exception as e:
+                logger.warning(f"Web search failed: {e}")
+                web_results = []
+
+            # Store in cache
+            if self._cache and web_results:
+                await self._cache.store(query, web_results, engines)
+
+        # 3. Local Docs Search
+        local_results = []
+        if include_local_docs and self._local_docs:
+            try:
+                await self._init_local_docs()
+                local_search = await self._local_docs.search(query, limit=5)
+                local_results = [r.to_searxng_format() for r in local_search]
+                result["pipeline"]["local_docs"] = {"count": len(local_results)}
+                self._stats["local_docs_results"] += len(local_results)
+            except Exception as e:
+                logger.warning(f"Local docs search failed: {e}")
+                result["pipeline"]["local_docs"] = {"error": str(e)}
+
+        # 4. Combine Results (local docs boosted)
+        combined = []
+        for doc in local_results:
+            doc_copy = doc.copy()
+            doc_copy["score"] = doc.get("score", 1.0) + 0.5
+            doc_copy["source_type"] = "local_docs"
+            combined.append(doc_copy)
+
+        for web in web_results:
+            web_copy = web.copy() if isinstance(web, dict) else web
+            web_copy["source_type"] = "web"
+            combined.append(web_copy)
+
+        # 5. Cross-Encoder Reranking
+        if apply_reranking and self._reranker and combined:
+            try:
+                reranked = await self._reranker.rerank_to_dicts(
+                    query, combined, content_key="content", top_k=top_k
+                )
+                combined = reranked
+                result["pipeline"]["reranking"] = {
+                    "applied": True,
+                    "input_count": len(combined),
+                    "output_count": len(reranked)
+                }
+                self._stats["reranked_searches"] += 1
+            except Exception as e:
+                logger.warning(f"Reranking failed: {e}")
+                result["pipeline"]["reranking"] = {"applied": False, "error": str(e)}
+        else:
+            result["pipeline"]["reranking"] = {"applied": False, "reason": "disabled or unavailable"}
+
+        # Sort by score
+        combined.sort(key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True)
+        result["results"] = combined[:top_k]
+
+        # 6. Track Metrics
+        if record_metrics and self._metrics:
+            try:
+                self._metrics.record_search(
+                    results=result["results"],
+                    response_time=(time.time() - start_time),
+                    engines_queried=engines
+                )
+                result["pipeline"]["metrics"] = {"recorded": True}
+            except Exception as e:
+                logger.debug(f"Metrics recording failed: {e}")
+                result["pipeline"]["metrics"] = {"recorded": False, "error": str(e)}
+
+        # 7. Record for Feedback (impressions)
+        if self._feedback and result["results"]:
+            try:
+                await self._init_feedback()
+                query_type = result["pipeline"]["routing"].get("query_type", "general")
+                await self._feedback.record_impression(
+                    query=query,
+                    query_type=query_type,
+                    results=result["results"]
+                )
+            except Exception as e:
+                logger.debug(f"Feedback recording failed: {e}")
+
+        # Final metadata
+        result["metadata"]["total_time_ms"] = (time.time() - start_time) * 1000
+        result["metadata"]["result_count"] = len(result["results"])
+
+        return result
+
+    async def record_click(
+        self,
+        query: str,
+        query_type: str,
+        engine: str,
+        url: str,
+        position: int
+    ):
+        """Record a user click for feedback learning."""
+        if self._feedback:
+            await self._init_feedback()
+            await self._feedback.record_feedback(SearchFeedback(
+                query=query,
+                query_type=query_type,
+                engine=engine,
+                url=url,
+                position=position,
+                signal=FeedbackSignal.CLICK
+            ))
+
     async def health_check(self) -> Dict[str, Any]:
         """
         Check if SearXNG is responding.
@@ -735,12 +993,29 @@ class SearXNGClient:
     def stats(self) -> Dict[str, Any]:
         """Get client statistics"""
         stats = self._stats.copy()
+        stats["features"] = {
+            "throttler": THROTTLER_AVAILABLE,
+            "fusion": FUSION_AVAILABLE,
+            "router": ROUTER_AVAILABLE,
+            "cache": CACHE_AVAILABLE,
+            "local_docs": LOCAL_DOCS_AVAILABLE,
+            "tls_rotation": TLS_ROTATION_AVAILABLE,
+            "reranker": RERANKER_AVAILABLE,
+            "metrics": METRICS_AVAILABLE,
+            "feedback": FEEDBACK_AVAILABLE
+        }
         if self._throttler:
             stats["throttler"] = self._throttler.get_all_status()
         if self._cache:
             stats["cache"] = self._cache.get_stats()
         if self._local_docs:
             stats["local_docs"] = self._local_docs.get_stats()
+        if self._tls_rotator:
+            stats["tls_rotation"] = self._tls_rotator.get_stats()
+        if self._reranker:
+            stats["reranker"] = self._reranker.get_stats()
+        if self._feedback:
+            stats["feedback"] = self._feedback.get_performance_summary()
         return stats
 
     def get_engine_health(self, engine: str = "default") -> Dict[str, Any]:

@@ -196,6 +196,30 @@ L3: Fresh Search           → Store in L1 + L2, 1-2s latency
 - Hybrid scoring: 70% cross-encoder + 30% original rank
 - Correctly prioritizes relevant results (e.g., SRVO-063 troubleshooting)
 
+**Full Pipeline Integration (2026-01-01):**
+All 9 features integrated into `search_full_pipeline()`:
+1. Query Routing → Auto-select engines by query type
+2. Semantic Cache → L1 (exact) + L2 (semantic) lookup
+3. Web Search → SearXNG with RRF fusion
+4. Local Docs → Meilisearch FANUC documentation
+5. Result Combination → Local boosted +0.5
+6. Cross-Encoder Reranking → Neural relevance scoring
+7. Metrics Tracking → Per-engine quality stats
+8. Feedback Loop → CTR/dwell learning
+
+**Feature Availability (Tested):**
+| Feature | Module | Status |
+|---------|--------|--------|
+| Throttler | intelligent_throttler.py | ✅ |
+| Fusion | result_fusion.py | ✅ |
+| Router | query_router.py | ✅ |
+| Cache | semantic_cache.py | ✅ |
+| Local Docs | local_docs.py | ✅ |
+| TLS Rotation | tls_rotation.py | ✅ |
+| Reranker | cross_encoder_rerank.py | ✅ |
+| Metrics | search_metrics.py | ✅ |
+| Feedback | feedback_loop.py | ✅ |
+
 ---
 
 ## Engine Status Quick Reference
