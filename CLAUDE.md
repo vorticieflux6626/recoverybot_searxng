@@ -1,18 +1,20 @@
 # SearXNG Self-Hosted Search Server
 
-> **Updated**: 2025-12-31 | **Parent**: [Root CLAUDE.md](../CLAUDE.md) | **Repository**: `recoverybot_searxng`
+> **Updated**: 2026-01-01 | **Parent**: [Root CLAUDE.md](../CLAUDE.md) | **Repository**: `recoverybot_searxng`
 
 ## Quick Reference
 
 | Action | Command | Notes |
 |--------|---------|-------|
-| Start Service | `./start.sh` | Starts SearXNG + Redis |
+| Start Service | `./start.sh` | Starts SearXNG + Redis + Tor |
 | Stop Service | `./stop.sh` | Stops containers |
 | Check Status | `./status.sh` | Health check |
 | View Logs | `./logs.sh` | Container logs |
 | Test Search | `./test_search.sh "query"` | Test query |
 | Check Engines | `./check_engines.sh` | Full engine health |
 | Update Settings | `./update_settings.sh` | Backup & update config |
+| Test RRF Fusion | `python3 result_fusion.py` | Test result ranking |
+| Test Query Router | `python3 query_router.py` | Test engine selection |
 
 ## Critical Rules
 
@@ -38,6 +40,7 @@ SearXNG is the authoritative source for:
 |---------|----------|---------|
 | Docker | Yes | Container runtime |
 | Redis (Valkey) | Yes | Result caching, rate limiting |
+| Tor | Yes | SOCKS5 proxy for anonymous requests |
 | nginx | No | SSL termination, external proxy |
 | memOS | No | Consumer of search results |
 
@@ -89,26 +92,88 @@ technobot.sparkonelabs.com:8443
 └── /search/           → SearXNG JSON API (port 8888)  ← THIS SERVICE
 ```
 
+## Advanced Features (2026-01-01)
+
+### Intelligent Request Throttling
+Reduces bot detection by mimicking human behavior:
+- **Poisson-distributed delays**: Natural inter-request timing
+- **Exponential backoff with jitter**: AWS-style failure recovery
+- **Per-engine circuit breaker**: Automatic failover on repeated failures
+- **Tor SOCKS5 proxy**: Anonymous requests via `socks5h://tor:9050`
+
+```python
+from intelligent_throttler import get_throttler
+throttler = get_throttler()
+await throttler.wait_before_request("brave")  # Human-like delay
+throttler.record_success("brave")  # Reset backoff
+```
+
+### Reciprocal Rank Fusion (RRF)
+Optimal result ranking when combining multiple engines:
+- **RRF score**: `1/(k + rank)` summed across engines (k=60)
+- **Multi-engine boost**: Results in 2+ engines rank higher
+- **Engine weights**: Brave 1.5x, Bing 1.2x, Mojeek 1.1x
+
+```python
+from result_fusion import get_fusion_engine
+fusion = get_fusion_engine()
+fused = fusion.fuse_from_searxng(results, method="rrf", top_k=20)
+```
+
+### Query Routing
+Automatic engine selection based on query patterns:
+
+| Query Type | Engines | Example Patterns |
+|------------|---------|------------------|
+| Academic | arxiv, openalex, pubmed | "research paper", "doi:", "et al" |
+| Technical | stackoverflow, github | "tutorial", "how to", "api" |
+| Industrial | brave, bing, reddit | "FANUC", "PLC", "servo" |
+| Troubleshooting | reddit, stackoverflow | "error", "not working", "fix" |
+| Medical | pubmed, wikipedia | "symptoms", "treatment" |
+| Code | github, pypi, npm | "python", "function", "class" |
+
+```python
+from query_router import get_router
+router = get_router()
+decision = router.route("FANUC SRVO-063 alarm")
+# decision.query_type = QueryType.INDUSTRIAL
+# decision.engines = ["brave", "bing", "reddit", "arxiv"]
+```
+
+### Smart Search (All-in-One)
+Combines routing + RRF fusion:
+```python
+from searxng_client import get_searxng_client
+client = get_searxng_client()
+result = await client.smart_search("machine learning paper 2024")
+# Auto-routes to academic engines, applies RRF fusion
+```
+
 ## Directory Structure
 
 ```
 /home/sparkone/sdd/Recovery_Bot/searxng/
 ├── CLAUDE.md              # This file - AI assistant guidance
+├── IMPROVEMENT_PLAN_2025-12-31.md  # 4-phase improvement roadmap
 ├── ENGINE_FIX_PLAN.md     # Implementation plan for engine fixes
 ├── GOOGLE_FIX_REMINDER.md # Reminder to re-enable Google when fixed
-├── docker-compose.yml     # Docker services (SearXNG + Redis) with health checks
+├── docker-compose.yml     # Docker services (SearXNG + Redis + Tor)
 ├── nginx.conf             # Reference nginx configuration for proxy
 ├── .env                   # Environment variables (SEARXNG_SECRET)
 ├── searxng/
-│   └── settings.yml       # SearXNG engine configuration (36 engines, 3 disabled)
-├── searxng_client.py      # Python async client for memOS integration
-├── start.sh               # Start the service
-├── stop.sh                # Stop the service
-├── status.sh              # Check service status and health
-├── logs.sh                # View container logs
-├── test_search.sh         # Test search with specific query
-├── check_engines.sh       # Full engine health check script
-└── update_settings.sh     # Update settings with backup
+│   ├── settings.yml       # SearXNG engine configuration (37 engines)
+│   └── limiter.toml       # Bot detection configuration
+├── searxng_client.py      # Python async client with smart_search()
+├── intelligent_throttler.py  # Human-like delays, circuit breaker
+├── result_fusion.py       # RRF, weighted, Borda count algorithms
+├── query_router.py        # Pattern-based engine selection
+├── search_metrics.py      # Quality tracking (MRR, latency)
+├── rotate-tls.sh          # TLS fingerprint rotation (cron)
+├── install-cron.sh        # Install TLS rotation cron job
+├── tests/
+│   ├── conftest.py        # Pytest configuration
+│   └── test_contracts.py  # 16 contract tests
+└── [shell scripts]        # start.sh, stop.sh, status.sh, etc.
 ```
 
 ## Quick Commands
@@ -531,6 +596,16 @@ See [SYSTEM_AUDIT_2025-12-31.md](./SYSTEM_AUDIT_2025-12-31.md) for comprehensive
 
 | Date | Change |
 |------|--------|
+| 2026-01-01 | Added intelligent_throttler.py (Poisson delays, circuit breaker) |
+| 2026-01-01 | Added result_fusion.py (RRF, weighted, Borda algorithms) |
+| 2026-01-01 | Added query_router.py (8 query types, pattern-based) |
+| 2026-01-01 | Added search_metrics.py (MRR, latency tracking) |
+| 2026-01-01 | Added OpenAlex academic engine (json_engine) |
+| 2026-01-01 | Added Tor SOCKS5 proxy container |
+| 2026-01-01 | Added smart_search() method combining routing + RRF |
+| 2026-01-01 | Added TLS fingerprint rotation cron (rotate-tls.sh) |
+| 2026-01-01 | Added 16 contract tests (tests/test_contracts.py) |
+| 2026-01-01 | Added limiter.toml for bot detection config |
 | 2025-12-31 | Fixed Docker permissions with user: "1000:1000" directive |
 | 2025-12-31 | Added industrial forum engines (disabled - bot protection) |
 | 2025-12-31 | Documented DuckDuckGo/Startpage CAPTCHA issue and workaround |
