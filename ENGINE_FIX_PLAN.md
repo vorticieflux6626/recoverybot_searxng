@@ -1,5 +1,7 @@
 # SearXNG Engine Fix Plan
 
+> **Updated**: 2025-12-30 | **Parent**: [SearXNG CLAUDE.md](./CLAUDE.md) | **Root**: [Project CLAUDE.md](../CLAUDE.md)
+
 Based on research from 4 sub-agents with comprehensive web searches and documentation analysis.
 
 ## Executive Summary
@@ -295,32 +297,36 @@ Watch for upstream fix:
 
 ## Implementation Checklist
 
-### Phase 1 (Today)
-- [ ] Disable Google engine in settings.yml
-- [ ] Add engine weights (Brave 1.5, Bing 1.2, Startpage 1.1)
-- [ ] Update ENGINE_GROUPS with Startpage
-- [ ] Restart SearXNG: `docker compose restart`
-- [ ] Test: `./test_search.sh "FANUC robot alarm"`
+### Phase 1 (Completed 2025-12-28)
+- [x] Disable Google engine in settings.yml
+- [x] Add engine weights (Brave 1.5, Bing 1.2, Startpage 1.1)
+- [x] Update ENGINE_GROUPS with Startpage
+- [x] Restart SearXNG: `docker compose restart`
+- [x] Test: `./test_search.sh "FANUC robot alarm"`
 
-### Phase 2 (This Week)
-- [ ] Add 6 Stack Exchange engines to settings.yml
-- [ ] Update ENGINE_GROUPS with new Q&A engines
-- [ ] Test: `curl "http://localhost:8888/search?q=linux+permissions&engines=askubuntu&format=json"`
+### Phase 2 (Completed 2025-12-28)
+- [x] Add 7 Stack Exchange engines to settings.yml
+- [x] Update ENGINE_GROUPS with new Q&A engines
+- [x] Test: `curl "http://localhost:8888/search?q=linux+permissions&engines=askubuntu&format=json"`
 
-### Phase 3 (Next Week)
-- [ ] Add GitLab, Codeberg, Bitbucket engines
-- [ ] Update ENGINE_GROUPS with code repositories
-- [ ] Test: `curl "http://localhost:8888/search?q=robotics+ROS&engines=gitlab&format=json"`
+### Phase 3 (Completed 2025-12-28)
+- [x] Add GitLab, Codeberg engines (Bitbucket skipped - xpath-based, less reliable)
+- [x] Update ENGINE_GROUPS with code repositories
+- [x] Test: `curl "http://localhost:8888/search?q=robotics+ROS&engines=gitlab&format=json"`
 
-### Phase 4 (Optimization)
-- [ ] Update Redis configuration in docker-compose.yml
-- [ ] Add per-engine timeouts to settings.yml
-- [ ] Set up TLS fingerprint rotation cron job
+### Phase 4 (Completed 2025-12-28)
+- [x] Update Redis configuration in docker-compose.yml
+- [x] Add per-engine timeouts to settings.yml
+- [ ] Set up TLS fingerprint rotation cron job (deferred - not needed currently)
 
-### Phase 5 (Monitoring)
-- [ ] Add Docker health checks
-- [ ] Create check_engines.sh script
-- [ ] Test health endpoints
+### Phase 5 (Completed 2025-12-28)
+- [x] Add Docker health checks
+- [x] Create check_engines.sh script
+- [x] Test health endpoints
+
+### Summary
+All critical phases completed. The SearXNG instance is fully operational with 34 engines configured.
+Remaining: TLS fingerprint rotation cron job (optional, deferred until blocking issues arise).
 
 ---
 
@@ -335,4 +341,15 @@ Watch for upstream fix:
 
 ---
 
-Generated: 2025-12-28
+## Related Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [SearXNG CLAUDE.md](./CLAUDE.md) | Main SearXNG documentation |
+| [GOOGLE_FIX_REMINDER.md](./GOOGLE_FIX_REMINDER.md) | Re-enable checklist when upstream fix is merged |
+| [Project CLAUDE.md](../CLAUDE.md) | Root project documentation |
+| [memOS searcher.py](../memOS/server/agentic/searcher.py) | ENGINE_GROUPS definitions |
+
+---
+
+**Generated**: 2025-12-28 | **Updated**: 2025-12-30

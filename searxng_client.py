@@ -109,7 +109,9 @@ class SearXNGClient:
         """
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self.default_engines = default_engines or ["google", "bing", "duckduckgo", "brave"]
+        # NOTE: Google disabled (upstream bug #5286), DuckDuckGo/Startpage hitting CAPTCHA
+        # Prioritize Brave/Bing which are consistently working
+        self.default_engines = default_engines or ["brave", "bing", "reddit", "wikipedia"]
         self._client: Optional[httpx.AsyncClient] = None
         self._stats = {
             "total_searches": 0,
@@ -294,8 +296,9 @@ class SearXNGClient:
         Returns:
             SearchResponse with combined results
         """
-        primary_engines = primary_engines or ["google", "bing"]
-        fallback_engines = fallback_engines or ["duckduckgo", "brave", "wikipedia"]
+        # NOTE: Google disabled (upstream bug #5286), DuckDuckGo/Startpage hitting CAPTCHA
+        primary_engines = primary_engines or ["brave", "bing"]
+        fallback_engines = fallback_engines or ["reddit", "wikipedia", "arxiv"]
 
         response = await self.search(query, engines=primary_engines)
 
@@ -389,9 +392,10 @@ async def main():
 
     # Test search
     print("\nSearching for 'Python programming'...")
+    # NOTE: Google disabled (upstream bug #5286)
     response = await client.search(
         "Python programming language",
-        engines=["google", "bing", "duckduckgo"]
+        engines=["brave", "bing", "duckduckgo"]
     )
 
     print(f"Found {len(response.results)} results in {response.search_time:.2f}s")

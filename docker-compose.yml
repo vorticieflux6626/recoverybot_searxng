@@ -38,6 +38,8 @@ services:
     container_name: searxng
     image: docker.io/searxng/searxng:latest
     restart: unless-stopped
+    # Run as host user (UID:GID 1000:1000) to preserve file ownership
+    user: "1000:1000"
     networks:
       - searxng
     ports:

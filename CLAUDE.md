@@ -1,6 +1,6 @@
 # SearXNG Self-Hosted Search Server
 
-> **Updated**: 2025-12-30 | **Parent**: [Root CLAUDE.md](../CLAUDE.md) | **Repository**: `recoverybot_searxng`
+> **Updated**: 2025-12-31 | **Parent**: [Root CLAUDE.md](../CLAUDE.md) | **Repository**: `recoverybot_searxng`
 
 ## Quick Reference
 
@@ -20,6 +20,53 @@
 2. **NEVER** expose port 8888 directly - always use nginx proxy with SSL
 3. **ALWAYS** use `format=json` parameter for API responses
 4. **ALWAYS** check engine status before debugging empty results - Google is currently DISABLED (bug #5286)
+
+## SSOT Responsibilities
+
+SearXNG is the authoritative source for:
+
+| Data Domain | Description |
+|-------------|-------------|
+| **Search Engine Configuration** | Engine list, weights, timeouts, categories |
+| **Engine Availability Status** | Current health and rate-limit status of each engine |
+| **Search Caching** | Redis-backed result caching with TTL |
+| **Engine Groups** | Pre-defined groups (academic, technical, general) |
+
+## Dependencies
+
+| Service | Required | Purpose |
+|---------|----------|---------|
+| Docker | Yes | Container runtime |
+| Redis (Valkey) | Yes | Result caching, rate limiting |
+| nginx | No | SSL termination, external proxy |
+| memOS | No | Consumer of search results |
+
+## Testing
+
+```bash
+# Start the service first
+./start.sh
+
+# Quick status check
+./status.sh
+
+# Test a specific query
+./test_search.sh "FANUC SRVO-063 alarm"
+
+# Comprehensive engine health check
+./check_engines.sh
+
+# Test specific engine groups
+./check_engines.sh test "robotics topic"
+
+# Manual API test
+curl "http://localhost:8888/search?q=test&format=json" | jq '.results | length'
+```
+
+**Test Scripts:**
+- `status.sh` - Container health and port checks
+- `test_search.sh` - Single query test with output
+- `check_engines.sh` - Full engine availability audit
 
 ## Overview
 
@@ -239,11 +286,28 @@ results = await searcher.search_with_engines(
 
 ### Known Issues
 
-1. **Google Engine (BROKEN)**: SearXNG upstream bug [#5286](https://github.com/searxng/searxng/issues/5286) - Google changed their response format. No fix yet. Workaround: Use Brave/Bing/Startpage instead.
+1. **Google Engine (BROKEN)**: SearXNG upstream bug [#5286](https://github.com/searxng/searxng/issues/5286) - Google changed their response format. No fix yet. Workaround: Use Brave/Bing instead.
 
-2. **Rate Limiting**: Some engines (DuckDuckGo, Google) may trigger CAPTCHAs or rate limits. The `limiter: false` setting helps for private instances.
+2. **DuckDuckGo/Startpage (CAPTCHA)**: As of 2025-12-31, both engines are hitting CAPTCHAs and returning 0 results. Removed from default ENGINE_GROUPS temporarily. Monitor and re-enable when cleared.
 
-3. **Niche Topics**: HackerNews and GitHub return 0 results for industrial/robotics topics (FANUC, etc.) - they simply don't have much content on these topics.
+3. **Rate Limiting**: Some engines may trigger CAPTCHAs or rate limits with heavy usage. Container restart may help temporarily: `docker compose restart searxng`
+
+4. **Niche Topics**: HackerNews and GitHub return 0 results for industrial/robotics topics (FANUC, etc.) - they simply don't have much content on these topics.
+
+### Current Working Engines (2025-12-31)
+
+| Engine | Status | Results |
+|--------|--------|---------|
+| Brave | Working | 15-20 results |
+| Bing | Working | 10 results |
+| Reddit | Working | 25 results |
+| Wikipedia | Working | 1-5 results |
+| arXiv | Working | 10+ results |
+| Stack Exchange (7) | Working | 10+ results |
+| GitHub/GitLab | Working | Variable |
+| DuckDuckGo | CAPTCHA | Temporarily disabled |
+| Startpage | CAPTCHA | Temporarily disabled |
+| Google | Broken | Disabled upstream bug |
 
 ### Engine Groups for memOS
 
@@ -404,10 +468,78 @@ cp -r searxng/ searxng-backup-$(date +%Y%m%d)/
 - [Recovery Bot CLAUDE.md](../CLAUDE.md)
 - [memOS CLAUDE.md](../memOS/CLAUDE.md)
 
+## memOS Integration (December 2025)
+
+SearXNG is deeply integrated with memOS agentic search pipeline (Phases G.1-G.7):
+
+### Integration Architecture
+
+```
+Android Client → memOS UniversalOrchestrator (8001)
+                        │
+                        ├── DyLAN Query Classification
+                        ├── QueryTreeDecoder
+                        ├── SearXNGSearcher → SearXNG (8888)
+                        │                         │
+                        │                         └── 31 Active Engines
+                        ├── A-MEM Semantic Memory
+                        ├── IB Noise Filtering
+                        ├── Cross-Encoder Reranking (BGE-M3)
+                        ├── Hyperbolic Embeddings (G.7.2)
+                        ├── Optimal Transport Fusion (G.7.3)
+                        └── TSDAE Domain Adaptation (G.7.4)
+```
+
+### memOS Features Leveraging SearXNG
+
+| Feature | Phase | Description |
+|---------|-------|-------------|
+| DyLAN Agent | G.6.2 | Classifies query complexity to select ENGINE_GROUPS |
+| A-MEM Memory | G.6.1 | Stores successful search patterns in SQLite |
+| IB Filtering | G.6.4 | Removes noise from search results |
+| Contrastive Learning | G.6.5 | Learns from cited URLs to improve rankings |
+| Cascade Retrieval | G.2 | Multi-stage filtering with MRL dimensions |
+| TSDAE Adaptation | G.7.4 | Domain-specific embeddings for industrial queries |
+
+### ENGINE_GROUPS in memOS
+
+The `searcher.py` defines query-type specific engine groups:
+
+| Query Type | Engines |
+|------------|---------|
+| `general` | brave,bing,startpage,duckduckgo,wikipedia |
+| `academic` | arxiv,semantic_scholar,pubmed,crossref,wikipedia |
+| `technical` | github,gitlab,stackoverflow,superuser,serverfault,pypi,npm,dockerhub,bing |
+| `fanuc` | reddit,brave,bing,startpage,arxiv,electronics_stackexchange,robotics_stackexchange |
+| `robotics` | reddit,brave,bing,arxiv,github,gitlab,robotics_stackexchange,electronics_stackexchange |
+| `linux` | askubuntu,unix_stackexchange,serverfault,arch_linux_wiki,gentoo,reddit,bing |
+| `imm` | reddit,brave,bing,startpage,wikipedia |
+
+### Integration Files
+
+| File | Purpose |
+|------|---------|
+| `memOS/server/agentic/searxng_search.py` | SearXNGSearcher class with fallback to DuckDuckGo |
+| `memOS/server/agentic/searcher.py` | ENGINE_GROUPS and query type detection |
+| `searxng/searxng_client.py` | Low-level SearXNG API client |
+
+### Latest Audit
+
+See [SYSTEM_AUDIT_2025-12-31.md](./SYSTEM_AUDIT_2025-12-31.md) for comprehensive analysis.
+
 ## Version History
 
 | Date | Change |
 |------|--------|
+| 2025-12-31 | Fixed Docker permissions with user: "1000:1000" directive |
+| 2025-12-31 | Added industrial forum engines (disabled - bot protection) |
+| 2025-12-31 | Documented DuckDuckGo/Startpage CAPTCHA issue and workaround |
+| 2025-12-31 | Removed DDG/Startpage from ENGINE_GROUPS in memOS searcher.py |
+| 2025-12-31 | Updated default_engines to brave,bing,reddit,wikipedia (CAPTCHA-free) |
+| 2025-12-31 | Added memOS Integration section with G.6/G.7 feature documentation |
+| 2025-12-31 | Fixed default_engines in searxng_client.py (removed disabled Google) |
+| 2025-12-31 | Fixed default_engines in searxng_search.py (removed disabled Google) |
+| 2025-12-31 | Created SYSTEM_AUDIT_2025-12-31.md comprehensive audit document |
 | 2025-12-29 | Updated engine status table with weights and all 34 engines |
 | 2025-12-29 | Added Docker configuration and nginx proxy sections |
 | 2025-12-29 | Updated directory structure with all scripts |

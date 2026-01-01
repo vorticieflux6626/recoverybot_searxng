@@ -324,6 +324,44 @@ engines:
     disabled: false
 
   # =============================================================
+  # INDUSTRIAL AUTOMATION / CNC FORUMS (Added 2025-12-31)
+  # NOTE: These forums have bot protection - disabled
+  # Use Reddit + Stack Exchange (robotics, electronics) for industrial topics
+  # =============================================================
+  - name: cnczone
+    engine: xpath
+    search_url: https://www.cnczone.com/forums/search.php?q={query}
+    url_xpath: //a[contains(@class, "searchResult")]/@href
+    title_xpath: //a[contains(@class, "searchResult")]
+    content_xpath: //div[@class="searchResult"]/p
+    categories: [it, science]
+    shortcut: cnc
+    timeout: 15.0
+    disabled: true  # Bot protection - access denied
+
+  - name: plctalk
+    engine: xpath
+    search_url: https://www.plctalk.net/threads/?q={query}
+    url_xpath: //a[contains(@class, "preview")]/@href
+    title_xpath: //a[contains(@class, "preview")]
+    content_xpath: //div[@class="contentRow-snippet"]
+    categories: [it, science]
+    shortcut: plc
+    timeout: 15.0
+    disabled: true  # Bot protection - access denied
+
+  - name: practical machinist
+    engine: xpath
+    search_url: https://www.practicalmachinist.com/forum/search/?q={query}
+    url_xpath: //a[@class="contentRow-title"]/@href
+    title_xpath: //a[@class="contentRow-title"]
+    content_xpath: //div[@class="contentRow-snippet"]
+    categories: [it, science]
+    shortcut: pmach
+    timeout: 15.0
+    disabled: true  # Bot protection likely
+
+  # =============================================================
   # DISABLED ENGINES
   # =============================================================
   - name: yahoo
@@ -333,6 +371,13 @@ engines:
     disabled: true
 
   - name: mojeek
+    disabled: true
+
+  # Temporarily disabled due to CAPTCHA issues (2025-12-31)
+  - name: duckduckgo
+    disabled: true
+
+  - name: startpage
     disabled: true
 
 categories_as_tabs:

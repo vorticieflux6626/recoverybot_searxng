@@ -1,8 +1,12 @@
 # Google Engine Fix Reminder
 
-**Created**: 2025-12-28
-**Review Date**: 2026-01-28 (1 month from now)
-**Issue**: https://github.com/searxng/searxng/issues/5286
+> **Updated**: 2025-12-30 | **Parent**: [SearXNG CLAUDE.md](./CLAUDE.md) | **Root**: [Project CLAUDE.md](../CLAUDE.md)
+
+| Field | Value |
+|-------|-------|
+| Created | 2025-12-28 |
+| Review Date | 2026-01-28 (1 month from now) |
+| Issue | [#5286](https://github.com/searxng/searxng/issues/5286) |
 
 ## Current Status
 
@@ -68,8 +72,20 @@ Check issue status:
 - Watch for PRs that reference this issue
 - Subscribe to issue notifications
 
-## Related Resources
+## Related Documentation
 
-- SearXNG Engine Documentation: https://docs.searxng.org/dev/engines/online/google.html
-- Alternative: Consider Brave Search API for guaranteed reliability
-- Mullvad Leta: Shut down Nov 27, 2025 (no longer available)
+| Document | Purpose |
+|----------|---------|
+| [SearXNG CLAUDE.md](./CLAUDE.md) | Main SearXNG documentation |
+| [ENGINE_FIX_PLAN.md](./ENGINE_FIX_PLAN.md) | Full implementation plan for engine fixes |
+| [Project CLAUDE.md](../CLAUDE.md) | Root project documentation |
+
+## External Resources
+
+| Resource | URL |
+|----------|-----|
+| SearXNG Engine Docs | https://docs.searxng.org/dev/engines/online/google.html |
+| Upstream Bug | https://github.com/searxng/searxng/issues/5286 |
+| Alternative (Brave API) | Consider for guaranteed reliability |
+
+**Note**: Mullvad Leta was shut down Nov 27, 2025 and is no longer available as a workaround.
