@@ -170,9 +170,10 @@ L3: Fresh Search           → Store in L1 + L2, 1-2s latency
 |------|--------|--------|--------|
 | Deploy Meilisearch for local FANUC docs | High | High | ✅ Done |
 | TLS fingerprint randomization (curl_cffi) | High | Medium | ✅ Done |
-| Residential proxy integration | Medium | Medium | Pending |
-| Google Programmable Search for industrial sites | Medium | Medium | Pending |
 | Cross-encoder reranking for search results | High | Medium | ✅ Done |
+| Full pipeline integration (`search_full_pipeline()`) | High | Very High | ✅ Done |
+| Residential proxy integration | Medium | Medium | 📋 Future |
+| Google Programmable Search for industrial sites | Medium | Medium | 📋 Future |
 
 **Meilisearch Implementation (2026-01-01):**
 - Container: `searxng-meilisearch` on port 7700
@@ -207,7 +208,7 @@ All 9 features integrated into `search_full_pipeline()`:
 7. Metrics Tracking → Per-engine quality stats
 8. Feedback Loop → CTR/dwell learning
 
-**Feature Availability (Tested):**
+**Feature Availability (Tested 2026-01-01):**
 | Feature | Module | Status |
 |---------|--------|--------|
 | Throttler | intelligent_throttler.py | ✅ |
@@ -219,6 +220,7 @@ All 9 features integrated into `search_full_pipeline()`:
 | Reranker | cross_encoder_rerank.py | ✅ |
 | Metrics | search_metrics.py | ✅ |
 | Feedback | feedback_loop.py | ✅ |
+| **Full Pipeline** | searxng_client.search_full_pipeline() | ✅ |
 
 ---
 
