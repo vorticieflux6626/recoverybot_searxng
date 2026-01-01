@@ -49,6 +49,14 @@ except ImportError:
     ROUTER_AVAILABLE = False
     QueryType = None
 
+# Import semantic cache
+try:
+    from semantic_cache import get_cache, SemanticCache
+    CACHE_AVAILABLE = True
+except ImportError:
+    CACHE_AVAILABLE = False
+    SemanticCache = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -128,7 +136,8 @@ class SearXNGClient:
         base_url: str = "http://localhost:8888",
         timeout: float = 30.0,
         default_engines: Optional[List[str]] = None,
-        enable_throttling: bool = True
+        enable_throttling: bool = True,
+        enable_cache: bool = True
     ):
         """
         Initialize SearXNG client.
@@ -138,6 +147,7 @@ class SearXNGClient:
             timeout: Request timeout in seconds
             default_engines: Default engines to use (None = all enabled)
             enable_throttling: Enable intelligent request throttling
+            enable_cache: Enable semantic caching (L1 Redis + L2 Qdrant)
         """
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -146,12 +156,16 @@ class SearXNGClient:
         self.default_engines = default_engines or ["brave", "bing", "mojeek", "reddit", "wikipedia"]
         self._client: Optional[httpx.AsyncClient] = None
         self._throttler = get_throttler() if enable_throttling and THROTTLER_AVAILABLE else None
+        self._cache = get_cache() if enable_cache and CACHE_AVAILABLE else None
+        self._cache_initialized = False
         self._stats = {
             "total_searches": 0,
             "total_results": 0,
             "errors": 0,
             "avg_response_time_ms": 0.0,
-            "throttle_delays_ms": 0.0
+            "throttle_delays_ms": 0.0,
+            "cache_hits": 0,
+            "cache_misses": 0
         }
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -162,6 +176,75 @@ class SearXNGClient:
                 follow_redirects=True
             )
         return self._client
+
+    async def _init_cache(self):
+        """Initialize cache if not already done."""
+        if self._cache and not self._cache_initialized:
+            await self._cache.initialize()
+            self._cache_initialized = True
+
+    async def cached_search(
+        self,
+        query: str,
+        engines: Optional[List[str]] = None,
+        use_cache: bool = True,
+        **kwargs
+    ) -> SearchResponse:
+        """
+        Search with semantic caching.
+
+        Checks L1 (exact hash) then L2 (semantic) cache before hitting engines.
+
+        Args:
+            query: Search query string
+            engines: List of engines to use
+            use_cache: Whether to use cache (default True)
+            **kwargs: Additional args passed to search()
+
+        Returns:
+            SearchResponse (may be from cache)
+        """
+        engines_list = engines or self.default_engines
+
+        # Try cache first
+        if use_cache and self._cache:
+            await self._init_cache()
+            entry, level = await self._cache.get(query, engines_list)
+            if entry:
+                self._stats["cache_hits"] += 1
+                logger.debug(f"Cache {level} hit for: {query[:30]}...")
+                # Convert cached results to SearchResponse
+                results = [
+                    SearchResult(
+                        title=r.get("title", ""),
+                        url=r.get("url", ""),
+                        content=r.get("content", ""),
+                        engine=r.get("engine", "cache"),
+                        score=r.get("score", 0.0),
+                        metadata={"cache_level": level, "cache_hit_count": entry.hit_count}
+                    )
+                    for r in entry.results
+                ]
+                return SearchResponse(
+                    query=query,
+                    results=results,
+                    number_of_results=len(results),
+                    search_time=0.001  # Cached, nearly instant
+                )
+
+        # Cache miss - perform actual search
+        self._stats["cache_misses"] += 1
+        response = await self.search(query, engines=engines_list, **kwargs)
+
+        # Store in cache
+        if use_cache and self._cache and response.results:
+            await self._cache.store(
+                query=query,
+                results=[r.to_dict() for r in response.results],
+                engines=engines_list
+            )
+
+        return response
 
     async def search(
         self,
@@ -554,6 +637,8 @@ class SearXNGClient:
         stats = self._stats.copy()
         if self._throttler:
             stats["throttler"] = self._throttler.get_all_status()
+        if self._cache:
+            stats["cache"] = self._cache.get_stats()
         return stats
 
     def get_engine_health(self, engine: str = "default") -> Dict[str, Any]:

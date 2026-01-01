@@ -131,7 +131,7 @@ class BraveSearcher:
 
 | Task | Effort | Impact | Status |
 |------|--------|--------|--------|
-| Implement semantic cache layer | High | Very High | Pending |
+| Implement semantic cache layer | High | Very High | ✅ Done (semantic_cache.py + Qdrant) |
 | Add search quality metrics (MRR, NDCG) | Medium | Medium | ✅ Done (search_metrics.py) |
 | Implement query router (pattern + LLM) | Medium | High | ✅ Done (query_router.py) |
 | Add feedback loop for preset learning | Medium | Medium | Pending |
@@ -142,12 +142,18 @@ class BraveSearcher:
 - Automatic engine group selection
 - Confidence scoring for routing decisions
 
-**Semantic Cache Architecture:**
+**Semantic Cache Architecture (Implemented 2026-01-01):**
 ```
-L1: Exact Hash (Redis)     → O(1) lookup
-L2: Semantic (Qdrant)      → Embedding similarity @ 0.88 threshold
-L3: Fresh Search           → Store in L1 + L2
+L1: Exact Hash (Redis)     → O(1) lookup, ~0.5ms latency
+L2: Semantic (Qdrant)      → nomic-embed-text (768-dim) @ 0.80 threshold, ~34ms
+L3: Fresh Search           → Store in L1 + L2, 1-2s latency
 ```
+
+**Cache Configuration:**
+- `semantic_cache.py` - Three-layer cache implementation
+- `docker-compose.yml` - Added Qdrant container (port 6333)
+- Embedding model: nomic-embed-text via Ollama
+- L1 TTL: 1 hour, L2 TTL: 24 hours
 
 ---
 
