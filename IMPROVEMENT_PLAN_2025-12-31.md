@@ -172,7 +172,7 @@ L3: Fresh Search           → Store in L1 + L2, 1-2s latency
 | TLS fingerprint randomization (curl_cffi) | High | Medium | ✅ Done |
 | Residential proxy integration | Medium | Medium | Pending |
 | Google Programmable Search for industrial sites | Medium | Medium | Pending |
-| Cross-encoder reranking for search results | High | Medium | Pending |
+| Cross-encoder reranking for search results | High | Medium | ✅ Done |
 
 **Meilisearch Implementation (2026-01-01):**
 - Container: `searxng-meilisearch` on port 7700
@@ -188,6 +188,13 @@ L3: Fresh Search           → Store in L1 + L2, 1-2s latency
 - Weighted random selection (Chrome 73%, Safari 22%, Edge 5%)
 - Session-based or per-request rotation modes
 - Tested at 100% success rate against httpbin.org
+
+**Cross-Encoder Reranking (2026-01-01):**
+- Module: `cross_encoder_rerank.py` using sentence-transformers
+- Models: MiniLM-L-2 (fast), MiniLM-L-6 (balanced), MiniLM-L-12 (quality)
+- Latency: ~230ms per rerank (after model load)
+- Hybrid scoring: 70% cross-encoder + 30% original rank
+- Correctly prioritizes relevant results (e.g., SRVO-063 troubleshooting)
 
 ---
 
