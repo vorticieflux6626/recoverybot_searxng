@@ -169,7 +169,7 @@ L3: Fresh Search           → Store in L1 + L2, 1-2s latency
 | Task | Effort | Impact | Status |
 |------|--------|--------|--------|
 | Deploy Meilisearch for local FANUC docs | High | High | ✅ Done |
-| TLS fingerprint randomization (curl_cffi) | High | Medium | Pending |
+| TLS fingerprint randomization (curl_cffi) | High | Medium | ✅ Done |
 | Residential proxy integration | Medium | Medium | Pending |
 | Google Programmable Search for industrial sites | Medium | Medium | Pending |
 | Cross-encoder reranking for search results | High | Medium | Pending |
@@ -181,6 +181,13 @@ L3: Fresh Search           → Store in L1 + L2, 1-2s latency
 - Integration: `local_docs.py` + `search_with_local_docs()` method
 - Documents: Servo troubleshooting, Motion alarms, System variables
 - Local docs prioritized in combined search results
+
+**TLS Fingerprint Rotation (2026-01-01):**
+- Module: `tls_rotation.py` using curl_cffi
+- 12 supported browser impersonations (Chrome 7, Safari 3, Edge 2)
+- Weighted random selection (Chrome 73%, Safari 22%, Edge 5%)
+- Session-based or per-request rotation modes
+- Tested at 100% success rate against httpbin.org
 
 ---
 
