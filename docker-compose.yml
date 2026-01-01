@@ -30,10 +30,11 @@ services:
         reservations:
           memory: 256M
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7700/health"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:7700/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
 
   # Qdrant vector database for semantic cache (L2)
   qdrant:
@@ -62,11 +63,13 @@ services:
           memory: 512M
         reservations:
           memory: 256M
+    # Note: Qdrant minimal image lacks curl/wget, using tcp check
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6333/healthz"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333' 2>/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
 
   # Tor SOCKS5 proxy for anonymous engine requests
   # Use socks5://tor:9050 in outgoing.proxies (future enhancement)
