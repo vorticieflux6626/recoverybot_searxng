@@ -42,10 +42,10 @@ Research from 4 expert agents covering: engine optimization, anti-detection stra
 
 | Task | Effort | Impact | Status |
 |------|--------|--------|--------|
-| Add Mojeek engine | Low | High | Pending |
-| Add Yep engine | Low | High | Pending |
-| Fix duplicate entries in settings.yml | Low | Medium | Pending |
-| Add Tor container to docker-compose | Medium | High | Pending |
+| Add Mojeek engine | Low | High | ✅ Done (10 results) |
+| Add Yep engine | Low | High | ❌ Blocked (HTTP 403) |
+| Fix duplicate entries in settings.yml | Low | Medium | ✅ Done |
+| Add Tor container to docker-compose | Medium | High | ✅ Done |
 | Lower DuckDuckGo/Startpage weights | Low | Medium | ✅ Done |
 
 **Configuration for Mojeek and Yep:**
@@ -156,8 +156,8 @@ L3: Fresh Search           → Store in L1 + L2
 |--------|--------|--------|-------|
 | **Brave** | ✅ Working | 1.5 | Primary engine |
 | **Bing** | ✅ Working | 1.2 | Secondary |
-| **Mojeek** | 🔜 To Add | 1.1 | Independent index |
-| **Yep** | 🔜 To Add | 1.0 | Ahrefs-backed |
+| **Mojeek** | ✅ Working | 1.1 | Independent index, 10 results |
+| **Yep** | ❌ Blocked | 1.0 | HTTP 403 bot protection |
 | **Reddit** | ✅ Working | 1.2 | Great for troubleshooting |
 | **Wikipedia** | ✅ Working | 1.0 | Reference |
 | DuckDuckGo | ⚠️ CAPTCHA | 0.7 | Disabled |

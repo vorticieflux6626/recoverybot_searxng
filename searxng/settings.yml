@@ -82,16 +82,32 @@ engines:
   - name: startpage
     engine: startpage
     shortcut: sp
-    weight: 1.1
-    disabled: false
+    weight: 0.8
+    disabled: true  # CAPTCHA issues (2025-12-31)
     timeout: 6.0
 
   - name: duckduckgo
     engine: duckduckgo
     shortcut: ddg
-    weight: 1.0
-    disabled: false
+    weight: 0.7
+    disabled: true  # CAPTCHA issues (2025-12-31)
     timeout: 4.0
+
+  # ALTERNATIVE ENGINES (Added 2025-12-31 per 4-agent research)
+  - name: mojeek
+    engine: mojeek
+    shortcut: mj
+    weight: 1.1
+    disabled: false
+    timeout: 8.0
+
+  - name: yep
+    engine: yep
+    shortcut: yep
+    weight: 1.0
+    disabled: true  # HTTP 403 - bot protection (2025-12-31)
+    timeout: 5.0
+    search_type: web
 
   # =============================================================
   # REFERENCE
@@ -368,16 +384,6 @@ engines:
     disabled: true
 
   - name: qwant
-    disabled: true
-
-  - name: mojeek
-    disabled: true
-
-  # Temporarily disabled due to CAPTCHA issues (2025-12-31)
-  - name: duckduckgo
-    disabled: true
-
-  - name: startpage
     disabled: true
 
 categories_as_tabs:
