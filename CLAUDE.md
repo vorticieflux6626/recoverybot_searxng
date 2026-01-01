@@ -6,13 +6,15 @@
 
 | Action | Command | Notes |
 |--------|---------|-------|
-| Start Service | `./start.sh` | Starts SearXNG + Redis + Tor |
+| Start Service | `./start.sh` | Starts SearXNG + Redis + Tor + Qdrant + Meilisearch |
 | Stop Service | `./stop.sh` | Stops containers |
 | Check Status | `./status.sh` | Health check |
 | View Logs | `./logs.sh` | Container logs |
 | Test Search | `./test_search.sh "query"` | Test query |
 | Check Engines | `./check_engines.sh` | Full engine health |
 | Update Settings | `./update_settings.sh` | Backup & update config |
+| **Activate venv** | `source venv/bin/activate` | Required for Python scripts |
+| Test Full Pipeline | `python3 -c "from searxng_client import *"` | After activating venv |
 | Test RRF Fusion | `python3 result_fusion.py` | Test result ranking |
 | Test Query Router | `python3 query_router.py` | Test engine selection |
 
@@ -22,6 +24,38 @@
 2. **NEVER** expose port 8888 directly - always use nginx proxy with SSL
 3. **ALWAYS** use `format=json` parameter for API responses
 4. **ALWAYS** check engine status before debugging empty results - Google is currently DISABLED (bug #5286)
+5. **ALWAYS** activate venv before running Python scripts: `source venv/bin/activate`
+
+## Python Virtual Environment
+
+**CRITICAL**: Always activate the venv before running Python scripts.
+
+```bash
+cd /home/sparkone/sdd/Recovery_Bot/searxng
+source venv/bin/activate
+
+# Now you can run Python scripts
+python3 searxng_client.py  # Test client
+python3 -c "from searxng_client import get_searxng_client; print('OK')"
+```
+
+**Installed Packages** (77 total in requirements.txt):
+| Package | Purpose |
+|---------|---------|
+| `redis` | L1 exact hash cache |
+| `qdrant-client` | L2 semantic similarity cache |
+| `meilisearch` | Local FANUC documentation search |
+| `curl_cffi` | TLS fingerprint rotation |
+| `sentence-transformers` | Cross-encoder reranking (GPU) |
+| `torch` | Neural network inference |
+| `ollama` | Embedding generation |
+
+**Recreate venv** (if needed):
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
 ## Feature Registry
 
@@ -718,6 +752,8 @@ See [SYSTEM_AUDIT_2025-12-31.md](./SYSTEM_AUDIT_2025-12-31.md) for comprehensive
 
 | Date | Change |
 |------|--------|
+| 2026-01-01 | Added Python venv with 77 packages for full pipeline (requirements.txt) |
+| 2026-01-01 | Fixed Qdrant API: query_points() instead of deprecated search() |
 | 2026-01-01 | **Full Pipeline Integration**: All 9 features in `search_full_pipeline()` |
 | 2026-01-01 | Added semantic_cache.py (L1 Redis + L2 Qdrant, nomic-embed-text) |
 | 2026-01-01 | Added local_docs.py (Meilisearch FANUC documentation search) |
