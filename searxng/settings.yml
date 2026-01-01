@@ -189,6 +189,24 @@ engines:
     disabled: false
     timeout: 30.0
 
+  # OpenAlex - Free academic search (240M+ works, 100K requests/day)
+  # Documentation: https://docs.openalex.org/api-entities/works/search-works
+  - name: openalex
+    engine: json_engine
+    shortcut: oa
+    categories: science
+    disabled: false
+    timeout: 15.0
+    paging: true
+    page_size: 25
+    first_page_num: 1
+    search_url: https://api.openalex.org/works?search={query}&per-page=25&page={pageno}&mailto=recoverybot@sparkonelabs.com
+    results_query: results
+    url_query: id
+    title_query: display_name
+    content_query: title
+    # Note: OpenAlex returns work ID as URL, actual DOI in separate field
+
   # =============================================================
   # Q&A - STACK EXCHANGE NETWORK
   # =============================================================

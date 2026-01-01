@@ -33,6 +33,22 @@ except ImportError:
     THROTTLER_AVAILABLE = False
     CircuitOpenError = Exception  # Fallback
 
+# Import result fusion
+try:
+    from result_fusion import get_fusion_engine, FusedResult
+    FUSION_AVAILABLE = True
+except ImportError:
+    FUSION_AVAILABLE = False
+    FusedResult = dict  # Fallback
+
+# Import query router
+try:
+    from query_router import get_router, QueryType
+    ROUTER_AVAILABLE = True
+except ImportError:
+    ROUTER_AVAILABLE = False
+    QueryType = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -364,6 +380,151 @@ class SearXNGClient:
                     seen_urls.add(result.url)
 
         return response
+
+    async def search_with_rrf(
+        self,
+        query: str,
+        engines: Optional[List[str]] = None,
+        fusion_method: str = "rrf",
+        top_k: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        Search with Reciprocal Rank Fusion for better result merging.
+
+        RRF provides superior ranking when combining results from multiple
+        search engines, as shown by Cormack et al. research.
+
+        Args:
+            query: Search query
+            engines: Engines to use (default: all working engines)
+            fusion_method: "rrf", "weighted", "borda", or "hybrid"
+            top_k: Number of top results to return
+
+        Returns:
+            List of fused result dicts with RRF scores
+        """
+        if not FUSION_AVAILABLE:
+            logger.warning("Result fusion not available, falling back to regular search")
+            response = await self.search(query, engines=engines, max_results=top_k)
+            return [r.to_dict() for r in response.results]
+
+        # Use all working engines for best fusion
+        engines = engines or ["brave", "bing", "mojeek", "reddit", "wikipedia"]
+
+        # Get results from SearXNG (already aggregated)
+        response = await self.search(query, engines=engines, max_results=100)
+
+        # Apply RRF fusion
+        fusion = get_fusion_engine()
+        fused_results = fusion.fuse_from_searxng(
+            [r.to_dict() for r in response.results],
+            method=fusion_method,
+            top_k=top_k
+        )
+
+        logger.info(
+            f"RRF fusion: {len(response.results)} raw -> {len(fused_results)} fused results"
+        )
+
+        return [r.to_dict() for r in fused_results]
+
+    async def search_academic(
+        self,
+        query: str,
+        top_k: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        Search academic sources with RRF fusion.
+
+        Uses: arxiv, semantic_scholar, openalex, pubmed, crossref
+        """
+        academic_engines = ["arxiv", "semantic_scholar", "openalex", "pubmed", "crossref"]
+        return await self.search_with_rrf(
+            query,
+            engines=academic_engines,
+            fusion_method="rrf",
+            top_k=top_k
+        )
+
+    async def search_technical(
+        self,
+        query: str,
+        top_k: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        Search technical sources with RRF fusion.
+
+        Uses: stackoverflow, github, brave, bing, reddit
+        """
+        technical_engines = ["stackoverflow", "github", "brave", "bing", "reddit"]
+        return await self.search_with_rrf(
+            query,
+            engines=technical_engines,
+            fusion_method="rrf",
+            top_k=top_k
+        )
+
+    async def smart_search(
+        self,
+        query: str,
+        use_rrf: bool = True,
+        top_k: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Intelligent search with automatic engine selection and RRF fusion.
+
+        Uses pattern-based query routing to select optimal engines,
+        then applies RRF fusion for best result ranking.
+
+        Args:
+            query: Search query
+            use_rrf: Whether to apply RRF fusion
+            top_k: Number of results to return
+
+        Returns:
+            Dict with results, routing info, and metadata
+        """
+        # Route query to optimal engines
+        if ROUTER_AVAILABLE:
+            router = get_router()
+            decision = router.route(query)
+            engines = decision.engines
+            query_type = decision.query_type.value
+            routing_confidence = decision.confidence
+            routing_reasoning = decision.reasoning
+        else:
+            engines = self.default_engines
+            query_type = "general"
+            routing_confidence = 0.5
+            routing_reasoning = "Query router not available"
+
+        logger.info(
+            f"Smart search: '{query[:50]}...' routed to {query_type} "
+            f"(confidence: {routing_confidence:.2f})"
+        )
+
+        # Execute search with selected engines
+        if use_rrf and FUSION_AVAILABLE:
+            results = await self.search_with_rrf(
+                query,
+                engines=engines,
+                fusion_method="rrf",
+                top_k=top_k
+            )
+        else:
+            response = await self.search(query, engines=engines, max_results=top_k)
+            results = [r.to_dict() for r in response.results]
+
+        return {
+            "query": query,
+            "query_type": query_type,
+            "routing_confidence": routing_confidence,
+            "routing_reasoning": routing_reasoning,
+            "engines_used": engines,
+            "result_count": len(results),
+            "results": results,
+            "fusion_applied": use_rrf and FUSION_AVAILABLE
+        }
 
     async def health_check(self) -> Dict[str, Any]:
         """
