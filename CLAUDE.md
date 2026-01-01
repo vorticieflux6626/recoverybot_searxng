@@ -23,6 +23,32 @@
 3. **ALWAYS** use `format=json` parameter for API responses
 4. **ALWAYS** check engine status before debugging empty results - Google is currently DISABLED (bug #5286)
 
+## Feature Registry
+
+**Before adding new features, check the registry:** `grep -i "feature" ../.memOS/FEATURE_REGISTRY.yaml`
+
+SearXNG owns features in the `search_infrastructure` category:
+
+| Feature | Status | File |
+|---------|--------|------|
+| `searxng_metasearch` | stable | Docker service on port 8888 |
+| `searxng_intelligent_throttling` | stable | `intelligent_throttler.py` |
+| `searxng_rrf_fusion` | stable | `result_fusion.py` |
+| `searxng_query_router` | stable | `query_router.py` |
+| `searxng_tor_integration` | stable | Tor container |
+| `searxng_search_metrics` | stable | `search_metrics.py` |
+| `searxng_semantic_cache` | stable | `semantic_cache.py` + Qdrant |
+| `searxng_local_docs` | stable | `local_docs.py` + Meilisearch |
+| `searxng_tls_rotation` | stable | `tls_rotation.py` |
+| `searxng_cross_encoder` | stable | `cross_encoder_rerank.py` |
+| `searxng_feedback_loop` | stable | `feedback_loop.py` |
+| `searxng_full_pipeline` | stable | `searxng_client.search_full_pipeline()` |
+
+**When adding new features:**
+1. Add to `../.memOS/FEATURE_REGISTRY.yaml` with `status: "planned"`
+2. Ensure integration with memOS is documented via `integrations` field
+3. Update this CLAUDE.md to reference the new feature
+
 ## SSOT Responsibilities
 
 SearXNG is the authoritative source for:
@@ -149,6 +175,90 @@ result = await client.smart_search("machine learning paper 2024")
 # Auto-routes to academic engines, applies RRF fusion
 ```
 
+### Semantic Cache (L1 + L2)
+Three-layer caching system for massive speedup:
+- **L1 (Redis)**: Exact query hash match, ~0.5ms latency
+- **L2 (Qdrant)**: Semantic similarity via nomic-embed-text embeddings, ~34ms
+- **L3 (Fresh)**: Full search with cache storage
+
+```python
+from semantic_cache import get_semantic_cache
+cache = get_semantic_cache()
+# L1 hit returns immediately; L2 uses 0.80 similarity threshold
+cached = await cache.get("FANUC servo alarm")
+```
+
+### Local Documentation Search (Meilisearch)
+Index and search local FANUC/industrial documentation:
+- **Container**: `searxng-meilisearch` on port 7700
+- **Index**: `fanuc_docs` with chunked documents
+- **Boost**: Local results get +0.5 score boost
+
+```python
+from local_docs import get_local_docs
+docs = get_local_docs()
+results = await docs.search("SRVO-063 troubleshooting")
+# Returns relevant chunks from local FANUC manuals
+```
+
+### TLS Fingerprint Rotation
+Browser impersonation to avoid bot detection:
+- **12 supported browsers**: Chrome (7), Safari (3), Edge (2)
+- **Weighted selection**: Chrome 73%, Safari 22%, Edge 5%
+- **Per-request or session modes**
+
+```python
+from tls_rotation import get_tls_rotator
+rotator = get_tls_rotator()
+async with rotator.get_session() as session:
+    response = await session.get("https://example.com")
+```
+
+### Cross-Encoder Reranking
+Neural reranking for higher relevance:
+- **Models**: MiniLM-L-2 (fast), L-6 (balanced), L-12 (quality)
+- **Latency**: ~230ms for 20 results
+- **Hybrid score**: 70% cross-encoder + 30% original rank
+
+```python
+from cross_encoder_rerank import get_reranker
+reranker = get_reranker()
+reranked = await reranker.rerank("query", results)
+```
+
+### Feedback Learning
+CTR and dwell time tracking for weight adjustment:
+- Tracks click-through rates per engine/query type
+- Calculates engagement scores (40% CTR, 25% dwell, 25% helpful, 10% position)
+- Returns weight multipliers (0.5x to 2.0x)
+
+```python
+from feedback_loop import get_feedback_loop
+feedback = get_feedback_loop()
+await feedback.record_click(query, result_url, position)
+weights = await feedback.get_weight_adjustments("industrial")
+```
+
+### Full Pipeline Search
+All 9 features in one call:
+
+```python
+from searxng_client import get_searxng_client
+client = get_searxng_client()
+result = await client.search_full_pipeline("FANUC SRVO-063 alarm")
+# Pipeline: Route → Cache → Search → LocalDocs → Rerank → Metrics → Feedback
+```
+
+**Pipeline Steps:**
+1. Query Routing → Select engines by query type
+2. Semantic Cache → L1/L2 lookup
+3. Web Search → SearXNG with throttling
+4. Local Docs → Meilisearch FANUC documentation
+5. Result Fusion → RRF merge web + local results
+6. Cross-Encoder → Neural reranking
+7. Metrics → Record quality stats
+8. Feedback → Weight learning
+
 ## Directory Structure
 
 ```
@@ -163,13 +273,19 @@ result = await client.smart_search("machine learning paper 2024")
 ├── searxng/
 │   ├── settings.yml       # SearXNG engine configuration (37 engines)
 │   └── limiter.toml       # Bot detection configuration
-├── searxng_client.py      # Python async client with smart_search()
+├── searxng_client.py      # Python async client with smart_search() + full_pipeline()
 ├── intelligent_throttler.py  # Human-like delays, circuit breaker
 ├── result_fusion.py       # RRF, weighted, Borda count algorithms
 ├── query_router.py        # Pattern-based engine selection
 ├── search_metrics.py      # Quality tracking (MRR, latency)
+├── semantic_cache.py      # L1 Redis + L2 Qdrant semantic cache
+├── local_docs.py          # Meilisearch FANUC documentation search
+├── tls_rotation.py        # curl_cffi browser impersonation
+├── cross_encoder_rerank.py # Neural cross-encoder reranking
+├── feedback_loop.py       # CTR/dwell time learning
 ├── rotate-tls.sh          # TLS fingerprint rotation (cron)
 ├── install-cron.sh        # Install TLS rotation cron job
+├── documents/             # Local FANUC documentation for Meilisearch
 ├── tests/
 │   ├── conftest.py        # Pytest configuration
 │   └── test_contracts.py  # 16 contract tests
@@ -400,13 +516,19 @@ linux: "askubuntu,unix_stackexchange,archlinux,serverfault,reddit,bing"
 |---------|---------------|-----------------|
 | SearXNG | 8888 | via nginx `/search/` |
 | Redis | 6379 | internal only |
+| Qdrant | 6333 | internal only (L2 cache) |
+| Meilisearch | 7700 | internal only (local docs) |
+| Tor | 9050 | SOCKS5 proxy internal |
 
 ## Docker Configuration
 
 ### Container Resources
 - **SearXNG**: 256-512MB memory, 4 workers, 4 threads
 - **Redis (Valkey)**: 256MB maxmemory, LRU eviction policy
-- **Health Checks**: Both containers have health checks (30s interval)
+- **Qdrant**: 256-512MB memory, vector storage for semantic cache
+- **Meilisearch**: 256-512MB memory, FANUC document index
+- **Tor**: Minimal footprint, SOCKS5 proxy on 9050
+- **Health Checks**: All containers have health checks (30s interval)
 
 ### Docker Compose Commands
 ```bash
@@ -596,6 +718,15 @@ See [SYSTEM_AUDIT_2025-12-31.md](./SYSTEM_AUDIT_2025-12-31.md) for comprehensive
 
 | Date | Change |
 |------|--------|
+| 2026-01-01 | **Full Pipeline Integration**: All 9 features in `search_full_pipeline()` |
+| 2026-01-01 | Added semantic_cache.py (L1 Redis + L2 Qdrant, nomic-embed-text) |
+| 2026-01-01 | Added local_docs.py (Meilisearch FANUC documentation search) |
+| 2026-01-01 | Added cross_encoder_rerank.py (MiniLM neural reranking) |
+| 2026-01-01 | Added feedback_loop.py (CTR/dwell time weight learning) |
+| 2026-01-01 | Added tls_rotation.py (curl_cffi browser impersonation) |
+| 2026-01-01 | Added Qdrant container for semantic cache L2 |
+| 2026-01-01 | Added Meilisearch container for local documentation |
+| 2026-01-01 | Fixed Docker health checks (curl for Meili, bash /dev/tcp for Qdrant) |
 | 2026-01-01 | Added intelligent_throttler.py (Poisson delays, circuit breaker) |
 | 2026-01-01 | Added result_fusion.py (RRF, weighted, Borda algorithms) |
 | 2026-01-01 | Added query_router.py (8 query types, pattern-based) |
