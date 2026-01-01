@@ -4,6 +4,12 @@ SearXNG Client for Recovery Bot Agentic Search
 This client provides async access to the self-hosted SearXNG metasearch engine.
 It replaces the rate-limited DuckDuckGo API calls with unlimited local searches.
 
+Features:
+- Intelligent throttling with human-like request timing
+- Exponential backoff with jitter on failures
+- Circuit breaker pattern for failing engines
+- Tor proxy integration for anonymity
+
 Usage:
     from searxng_client import SearXNGClient, get_searxng_client
 
@@ -18,6 +24,14 @@ from typing import List, Dict, Any, Optional
 from enum import Enum
 
 import httpx
+
+# Import intelligent throttler
+try:
+    from intelligent_throttler import get_throttler, CircuitOpenError
+    THROTTLER_AVAILABLE = True
+except ImportError:
+    THROTTLER_AVAILABLE = False
+    CircuitOpenError = Exception  # Fallback
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +111,8 @@ class SearXNGClient:
         self,
         base_url: str = "http://localhost:8888",
         timeout: float = 30.0,
-        default_engines: Optional[List[str]] = None
+        default_engines: Optional[List[str]] = None,
+        enable_throttling: bool = True
     ):
         """
         Initialize SearXNG client.
@@ -106,18 +121,21 @@ class SearXNGClient:
             base_url: SearXNG server URL
             timeout: Request timeout in seconds
             default_engines: Default engines to use (None = all enabled)
+            enable_throttling: Enable intelligent request throttling
         """
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         # NOTE: Google disabled (upstream bug #5286), DuckDuckGo/Startpage hitting CAPTCHA
-        # Prioritize Brave/Bing which are consistently working
-        self.default_engines = default_engines or ["brave", "bing", "reddit", "wikipedia"]
+        # Prioritize Brave/Bing/Mojeek which are consistently working
+        self.default_engines = default_engines or ["brave", "bing", "mojeek", "reddit", "wikipedia"]
         self._client: Optional[httpx.AsyncClient] = None
+        self._throttler = get_throttler() if enable_throttling and THROTTLER_AVAILABLE else None
         self._stats = {
             "total_searches": 0,
             "total_results": 0,
             "errors": 0,
-            "avg_response_time_ms": 0.0
+            "avg_response_time_ms": 0.0,
+            "throttle_delays_ms": 0.0
         }
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -180,7 +198,25 @@ class SearXNGClient:
         if time_range:
             params["time_range"] = time_range.value
 
+        # Determine primary engine for throttling
+        engine_name = (engines[0] if engines else
+                       self.default_engines[0] if self.default_engines else "default")
+
         try:
+            # Apply intelligent throttling (human-like delays)
+            throttle_delay = 0.0
+            if self._throttler:
+                try:
+                    throttle_delay = await self._throttler.wait_before_request(engine_name)
+                    self._stats["throttle_delays_ms"] += throttle_delay * 1000
+                except CircuitOpenError as e:
+                    logger.warning(f"Circuit open for {engine_name}: {e}")
+                    # Try with different engines if circuit is open
+                    if engines and len(engines) > 1:
+                        params["engines"] = ",".join(engines[1:])
+                    else:
+                        raise
+
             response = await client.get(
                 f"{self.base_url}/search",
                 params=params
@@ -207,6 +243,10 @@ class SearXNGClient:
                     }
                 ))
 
+            # Record success for throttler
+            if self._throttler:
+                self._throttler.record_success(engine_name)
+
             # Update stats
             self._stats["total_searches"] += 1
             self._stats["total_results"] += len(results)
@@ -216,7 +256,8 @@ class SearXNGClient:
             )
 
             logger.debug(
-                f"SearXNG search '{query[:50]}...': {len(results)} results in {elapsed_ms:.0f}ms"
+                f"SearXNG search '{query[:50]}...': {len(results)} results in {elapsed_ms:.0f}ms "
+                f"(throttle: {throttle_delay*1000:.0f}ms)"
             )
 
             return SearchResponse(
@@ -232,10 +273,16 @@ class SearXNGClient:
         except httpx.HTTPStatusError as e:
             logger.error(f"SearXNG HTTP error: {e.response.status_code}")
             self._stats["errors"] += 1
+            # Record failure for throttler with error type
+            if self._throttler:
+                error_type = "rate_limit" if e.response.status_code == 429 else "http_error"
+                self._throttler.record_failure(engine_name, error_type)
             raise
         except Exception as e:
             logger.error(f"SearXNG search failed: {e}")
             self._stats["errors"] += 1
+            if self._throttler:
+                self._throttler.record_failure(engine_name, "unknown")
             raise
 
     async def search_multi_query(
@@ -343,7 +390,16 @@ class SearXNGClient:
     @property
     def stats(self) -> Dict[str, Any]:
         """Get client statistics"""
-        return self._stats.copy()
+        stats = self._stats.copy()
+        if self._throttler:
+            stats["throttler"] = self._throttler.get_all_status()
+        return stats
+
+    def get_engine_health(self, engine: str = "default") -> Dict[str, Any]:
+        """Get health status for a specific engine."""
+        if self._throttler:
+            return self._throttler.get_engine_status(engine)
+        return {"status": "throttling_disabled"}
 
     async def close(self):
         """Close the HTTP client"""

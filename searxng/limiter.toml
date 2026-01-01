@@ -1,0 +1,29 @@
+# SearXNG Limiter Configuration
+# Documentation: https://docs.searxng.org/admin/searx.limiter.html
+# Purpose: Rate limiting for private instance (internal use only)
+#
+# Since this is a private instance (not public-facing), we disable
+# most incoming bot detection but configure settings to prevent
+# being detected as a bot by upstream search engines.
+
+[botdetection]
+# IP prefix for rate limiting (32 = per-IP, 24 = per /24 subnet)
+ipv4_prefix = 32
+ipv6_prefix = 48
+
+[botdetection.ip_limit]
+# Disable link-local filtering (we trust our local network)
+filter_link_local = false
+# Disable link token (not needed for API access)
+link_token = false
+
+[botdetection.ip_lists]
+# Empty block list (internal use only)
+block_ip = []
+# Trust localhost and Docker network
+pass_ip = [
+    "127.0.0.1",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "10.0.0.0/8"
+]
