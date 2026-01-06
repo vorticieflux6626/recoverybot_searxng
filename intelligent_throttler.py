@@ -40,9 +40,9 @@ class EngineHealth:
     total_requests: int = 0
     total_failures: int = 0
 
-    # Circuit breaker thresholds
-    failure_threshold: int = 3
-    recovery_timeout: float = 60.0  # Seconds before trying again
+    # Circuit breaker thresholds (relaxed for heavy testing)
+    failure_threshold: int = 5  # Increased from 3 to allow transient errors
+    recovery_timeout: float = 30.0  # Reduced from 60s for faster recovery
 
     @property
     def failure_rate(self) -> float:
@@ -200,8 +200,8 @@ class IntelligentThrottler:
             # Increase recovery timeout based on error type
             if error_type in ("captcha", "access_denied"):
                 health.recovery_timeout = min(
-                    health.recovery_timeout * 2,
-                    600.0  # Max 10 minutes
+                    health.recovery_timeout * 1.5,  # Reduced multiplier from 2x
+                    300.0  # Max 5 minutes (reduced from 10)
                 )
 
         return health.current_backoff
