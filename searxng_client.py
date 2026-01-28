@@ -204,8 +204,9 @@ class SearXNGClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         # NOTE: Google disabled (upstream bug #5286), DuckDuckGo/Startpage hitting CAPTCHA
-        # Prioritize Brave/Bing/Mojeek which are consistently working
-        self.default_engines = default_engines or ["brave", "bing", "mojeek", "reddit", "wikipedia"]
+        # Mojeek disabled (HTTP 403 bot protection - 2026-01-28)
+        # Prioritize Brave/Bing which are consistently working
+        self.default_engines = default_engines or ["brave", "bing", "reddit", "wikipedia"]
         self._client: Optional[httpx.AsyncClient] = None
         self._throttler = get_throttler() if enable_throttling and THROTTLER_AVAILABLE else None
         self._cache = get_cache() if enable_cache and CACHE_AVAILABLE else None
